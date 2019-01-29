@@ -1,0 +1,3293 @@
+     myLine.makeLinePerp(pose, &perpLine);
+      return intersects(&perpLine, perpPoint);
+    }
+   /// Calculate the distance from the given point to (its projection on) this line segment
+  /**
+     @param pose the the pose to find the perp point of
+
+     @return if the pose does not intersect segment it will return < 0
+     if the pose intersects the segment it will return the distance to
+     the intersection
+  **/
+  virtual double getPerpDist(const ArPose &pose) const
+    {
+      ArPose perpPose;
+      ArLine perpLine;
+      myLine.makeLinePerp(&pose, &perpLine);
+      if (!intersects(&perpLine, &perpPose))
+	return -1;
+      return (perpPose.findDistanceTo(pose));
+    }
+   /// Calculate the squared distance from the given point to (its projection on) this line segment
+  /**
+     @param pose the the pose to find the perp point of
+
+     @return if the pose does not intersect segment it will return < 0
+     if the pose intersects the segment it will return the distance to
+     the intersection
+  **/
+  virtual double getPerpSquaredDist(const ArPose &pose) const
+    {
+      ArPose perpPose;
+      ArLine perpLine;
+      myLine.makeLinePerp(&pose, &perpLine);
+      if (!intersects(&perpLine, &perpPose))
+	      return -1;
+      return (perpPose.squaredFindDistanceTo(pose));
+    }
+
+   /// Gets the distance from this line segment to a point.
+  /**
+   * If the point can be projected onto this line segment (i.e. a
+   * perpendicular line can be drawn through the point), then
+   * return that distance. Otherwise, return the distance to the closest
+   * endpoint.
+     @param pose the pointer of the pose to find the distance to
+  **/
+  double getDistToLine(const ArPose &pose) const
+    {
+      ArPose perpPose;
+      ArLine perpLine;
+      myLine.makeLinePerp(&pose, &perpLine);
+      if (!intersects(&perpLine, &perpPose))
+      {
+	      return ArUtil::findMin(
+		                    ArMath::roundInt(getEndPoint1().findDistanceTo(pose)),
+		                    ArMath::roundInt(getEndPoint2().findDistanceTo(pose)));
+      }
+      return (perpPose.findDistanceTo(pose));
+    }
+  
+  /// Determines the length of the line segment
+  double getLengthOf() const
+  {
+    return ArMath::distanceBetween(myX1, myY1, myX2, myY2);
+  }
+
+  /// Determines the mid point of the line segment
+  ArPose getMidPoint() const
+  {
+    return ArPose(((myX1 + myX2) / 2.0),
+                  ((myY1 + myY2) / 2.0));
+  }
+
+
+  /// Gets the x coordinate of the first endpoint
+  double getX1(void) const { return myX1; }
+  /// Gets the y coordinate of the first endpoint
+  double getY1(void) const { return myY1; } 
+  /// Gets the x coordinate of the second endpoint
+  double getX2(void) const { return myX2; }
+  /// Gets the y coordinate of the second endpoint
+  double getY2(void) const { return myY2; }
+  /// Gets the A line parameter (see ArLine)
+  double getA(void) const { return myLine.getA(); }
+  /// Gets the B line parameter (see ArLine)
+  double getB(void) const { return myLine.getB(); }
+  /// Gets the C line parameter (see ArLine)
+  double getC(void) const { return myLine.getC(); }
+
+  /// Internal function for seeing if a point on our line is within our segment
+  bool linePointIsInSegment(ArPose *pose) const
+    {
+      bool isVertical = (ArMath::fabs(myX1 - myX2) < ArMath::epsilon());
+      bool isHorizontal = (ArMath::fabs(myY1 - myY2) < ArMath::epsilon());
+
+      if (!isVertical || !isHorizontal) {
+
+        return (((isVertical) || 
+	               (pose->getX() >= myX1 && pose->getX() <= myX2) || 
+	               (pose->getX() <= myX1 && pose->getX() >= myX2)) &&
+	              ((isHorizontal) || 
+	               (pose->getY() >= myY1 && pose->getY() <= myY2) || 
+	               (pose->getY() <= myY1 && pose->getY() >= myY2)));
+      }
+      else { // single point segment
+
+        return ((ArMath::fabs(myX1 - pose->getX()) < ArMath::epsilon()) &&
+                (ArMath::fabs(myY1 - pose->getY()) < ArMath::epsilon()));
+
+      } // end else single point segment
+    }
+
+  const ArLine *getLine(void) const { return &myLine; }
+
+  /// Equality operator (for sets)
+  virtual bool operator==(const ArLineSegment& other) const
+  {
+
+    return ((fabs(myX1 - other.myX1) < ArMath::epsilon()) &&
+            (fabs(myY1 - other.myY1) < ArMath::epsilon()) &&
+            (fabs(myX2 - other.myX2) < ArMath::epsilon()) &&
+            (fabs(myY2 - other.myY2) < ArMath::epsilon()));
+  }
+
+  virtual bool operator!=(const ArLineSegment& other) const
+  {
+    return ((fabs(myX1 - other.myX1) > ArMath::epsilon()) ||
+            (fabs(myY1 - other.myY1) > ArMath::epsilon()) ||
+            (fabs(myX2 - other.myX2) > ArMath::epsilon()) ||
+            (fabs(myY2 - other.myY2) > ArMath::epsilon()));
+
+  }
+
+  /// Less than operator (for sets)
+  virtual bool operator<(const ArLineSegment& other) const
+  {
+
+    if (fabs(myX1 - other.myX1) > ArMath::epsilon()) {
+      return myX1 < other.myX1;
+    }
+    else if (fabs(myY1 - other.myY1) > ArMath::epsilon()) {
+      return myY1 < other.myY1;  
+    }
+    if (fabs(myX2 - other.myX2) > ArMath::epsilon()) {
+      return myX2 < other.myX2;
+    }
+    else if (fabs(myY2 - other.myY2) > ArMath::epsilon()) {
+      return myY2 < other.myY2;
+    }
+    // Otherwise... all coords are equal
+    return false;
+  }
+
+protected:
+  double myX1, myY1, myX2, myY2;
+  ArLine myLine;
+};
+
+/**
+   @brief Use for computing a running average of a number of elements
+   @ingroup UtilityClasses
+*/
+class ArRunningAverage
+{
+public:
+  /// Constructor, give it the number of elements to store to compute the average
+  AREXPORT ArRunningAverage(size_t numToAverage);
+  /// Destructor
+  AREXPORT ~ArRunningAverage();
+  /// Gets the average
+  AREXPORT double getAverage(void) const;
+  /// Adds a value to the average. An old value is discarded if the number of elements to average has been reached.
+  AREXPORT void add(double val);
+  /// Clears the average
+  AREXPORT void clear(void);
+  /// Gets the number of elements
+  AREXPORT size_t getNumToAverage(void) const;
+  /// Sets the number of elements
+  AREXPORT void setNumToAverage(size_t numToAverage);
+  /// Sets if this is using a the root mean square average or just the normal average
+  AREXPORT void setUseRootMeanSquare(bool useRootMeanSquare);
+  /// Gets if this is using a the root mean square average or just the normal average
+  AREXPORT bool getUseRootMeanSquare(void);
+  /// Gets the number of values currently averaged so far
+  AREXPORT size_t getCurrentNumAveraged(void);
+protected:
+  size_t myNumToAverage;
+  double myTotal;
+  size_t myNum;
+  bool myUseRootMeanSquare;
+  std::list<double> myVals;
+};
+
+/// This is a class for computing a root mean square average of a number of elements
+/// @ingroup UtilityClasses
+class ArRootMeanSquareCalculator
+{
+public:
+  /// Constructor
+  AREXPORT ArRootMeanSquareCalculator();
+  /// Destructor
+  AREXPORT ~ArRootMeanSquareCalculator();
+  /// Gets the average
+  AREXPORT double getRootMeanSquare (void) const;
+  /// Adds a number
+  AREXPORT void add(int val);
+  /// Clears the average
+  AREXPORT void clear(void);
+  /// Sets the name
+  AREXPORT void setName(const char *name);
+  /// Gets the name
+  AREXPORT const char *getName(void);  
+  /// Gets the num averaged
+  AREXPORT size_t getCurrentNumAveraged(void);
+protected:
+  long long myTotal;
+  size_t myNum;
+  std::string myName;
+};
+
+
+//class ArStrCaseCmpOp :  public std::binary_function <const std::string&, const std::string&, bool> 
+/// strcasecmp for sets
+/// @ingroup UtilityClasses
+struct ArStrCaseCmpOp 
+{
+public:
+  bool operator() (const std::string &s1, const std::string &s2) const
+  {
+    return strcasecmp(s1.c_str(), s2.c_str()) < 0;
+  }
+};
+
+/// ArPose less than comparison for sets
+/// @ingroup UtilityClasses
+struct ArPoseCmpOp
+{
+public:
+  bool operator() (const ArPose &pose1, const ArPose &pose2) const
+  {
+    return (pose1 < pose2);
+
+    //return (pose1.getX() < pose2.getX() || pose1.getY() < pose2.getY() ||
+	  //        pose1.getTh() < pose2.getTh());
+  }
+};
+
+/// ArLineSegment less than comparison for sets
+/// @ingroup UtilityClasses
+struct ArLineSegmentCmpOp
+{
+public:
+  bool operator() (const ArLineSegment &line1, 
+		               const ArLineSegment &line2) const
+  {
+    return (line1 < line2);
+
+    //return (line1.getX1() < line2.getX1() || line1.getY1() < line2.getY1() ||
+	  //  line1.getX2() < line2.getX2() || line1.getY2() < line2.getY2());
+  }
+};
+
+
+#if !defined(WIN32) && !defined(SWIG)
+/** @brief Switch to running the program as a background daemon (i.e. fork) (Only available in Linux)
+  @swigomit
+  @notwindows
+  @ingroup UtilityClasses
+  @ingroup OptionalClasses
+ */
+class ArDaemonizer
+{
+public:
+  /// Constructor that sets up for daemonizing if arg checking
+  AREXPORT ArDaemonizer(int *argc, char **argv, bool closeStdErrAndStdOut);
+  /// Destructor
+  AREXPORT ~ArDaemonizer();
+  /// Daemonizes if asked too by arguments
+  AREXPORT bool daemonize(void);
+  /// Daemonizes always
+  AREXPORT bool forceDaemonize(void);
+  /// Logs the options
+  AREXPORT void logOptions(void) const;
+  /// Returns if we're daemonized or not
+  bool isDaemonized(void) { return myIsDaemonized; }
+protected:
+  ArArgumentParser myParser;
+  bool myIsDaemonized;
+  bool myCloseStdErrAndStdOut;
+  ArConstFunctorC<ArDaemonizer> myLogOptionsCB;
+};
+#endif // !win32 && !swig
+
+
+
+/// Contains enumeration of four user-oriented priority levels (used primarily by ArConfig)
+class ArPriority
+{
+public:
+  enum Priority 
+  {
+    IMPORTANT, ///< Basic things that should be modified to suit 
+    BASIC = IMPORTANT,  ///< Basic things that should be modified to suit 
+    FIRST_PRIORITY = IMPORTANT,
+
+    NORMAL,    ///< Intermediate things that users may want to modify
+    INTERMEDIATE = NORMAL, ///< Intermediate things that users may want to modify
+
+    DETAILED, ///< Advanced items that probably shouldn't be modified
+    TRIVIAL = DETAILED, ///< Advanced items (alias for historic reasons)
+    ADVANCED = DETAILED, ///< Advanced items that probably shouldn't be modified
+
+    EXPERT,  ///< Items that should be modified only by expert users or developers
+    FACTORY, ///< Items that should be modified at the factory, often apply to a robot model
+
+    CALIBRATION, ///< Items that apply to a particular hardware instance
+
+    LAST_PRIORITY = CALIBRATION ///< Last value in the enumeration
+  };
+
+  enum {
+    PRIORITY_COUNT = LAST_PRIORITY + 1 ///< Number of priority values
+  };
+
+  /// Returns the displayable text string for the given priority
+  AREXPORT static const char * getPriorityName(Priority priority);
+   
+  /// Returns the priority value that corresponds to the given displayable text string
+  /**
+   * @param text the char * to be converted to a priority value
+   * @param ok an optional bool * set to true if the text was successfully 
+   * converted; false if the text was not recognized as a priority
+  **/
+  AREXPORT static Priority getPriorityFromName(const char *text,
+                                               bool *ok = NULL);
+
+protected:
+
+  /// Whether the map of priorities to display text has been initialized
+  static bool ourStringsInited;
+  /// Map of priorities to displayable text
+  static std::map<Priority, std::string> ourPriorityNames;
+  /// Map of displayable text to priorities
+  static std::map<std::string, ArPriority::Priority, ArStrCaseCmpOp> ourNameToPriorityMap;
+
+  /// Display text used when a priority's displayable text has not been defined
+  static std::string ourUnknownPriorityName;
+};
+
+/// holds information about ArStringInfo component strings (it's a helper class for other things)
+/**
+   This class holds information for about different strings that are available 
+ **/
+class ArStringInfoHolder
+{
+public:
+  /// Constructor
+  ArStringInfoHolder(const char *name, ArTypes::UByte2 maxLength, 
+		     ArFunctor2<char *, ArTypes::UByte2> *functor)
+    { myName = name; myMaxLength = maxLength; myFunctor = functor; }
+  /// Destructor
+  virtual ~ArStringInfoHolder() {}
+  /// Gets the name of this piece of info
+  const char *getName(void) { return myName.c_str(); }
+  /// Gets the maximum length of this piece of info
+  ArTypes::UByte2 getMaxLength(void) { return myMaxLength; }
+  /// Gets the function that will fill in this piece of info
+  ArFunctor2<char *, ArTypes::UByte2> *getFunctor(void) { return myFunctor; }
+protected:
+  std::string myName;
+  ArTypes::UByte2 myMaxLength;
+  ArFunctor2<char *, ArTypes::UByte2> *myFunctor;
+};
+
+/// This class just holds some helper functions for the ArStringInfoHolder 
+class ArStringInfoHolderFunctions
+{
+public:
+  static void intWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			 ArRetFunctor<int> *functor, const char *format)
+    { snprintf(buffer, bufferLen - 1, format, functor->invokeR()); 
+    buffer[bufferLen-1] = '\0'; }
+  static void doubleWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			    ArRetFunctor<double> *functor, const char *format)
+    { snprintf(buffer, bufferLen - 1, format, functor->invokeR()); 
+    buffer[bufferLen-1] = '\0'; }
+  static void boolWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			  ArRetFunctor<bool> *functor, const char *format)
+    { snprintf(buffer, bufferLen - 1, format, 
+	       ArUtil::convertBool(functor->invokeR())); 
+    buffer[bufferLen-1] = '\0'; }
+  static void stringWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			    ArRetFunctor<const char *> *functor, 
+			    const char *format)
+  { snprintf(buffer, bufferLen - 1, format, functor->invokeR()); 
+  buffer[bufferLen-1] = '\0'; }
+  static void unsignedLongWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			 ArRetFunctor<unsigned long> *functor, const char *format)
+    { snprintf(buffer, bufferLen - 1, format, functor->invokeR()); 
+    buffer[bufferLen-1] = '\0'; }
+  static void longWrapper(char * buffer, ArTypes::UByte2 bufferLen, 
+			 ArRetFunctor<long> *functor, const char *format)
+    { snprintf(buffer, bufferLen - 1, format, functor->invokeR()); 
+    buffer[bufferLen-1] = '\0'; }
+};
+
+/** A class to hold a list of callbacks to call
+    GenericFunctor must be a pointer to an ArFunctor or subclass.
+    e.g. declare like this:
+    @code
+      ArGenericCallbackList< ArFunctorC<MyClass> * > callbackList;
+    @endcode
+    then invoke it like this:
+    @code
+      callbackList.invoke();
+    @endcode
+    To pass an argument to the callbacks, use ArCallbackList1 instead.
+    @ingroup UtilityClasses
+**/
+
+template<class GenericFunctor> 
+class ArGenericCallbackList
+{
+public:
+  /// Constructor
+  ArGenericCallbackList(const char *name = "", 
+				 ArLog::LogLevel logLevel = ArLog::Verbose,
+				 bool singleShot = false)
+    {
+      myName = name;
+      mySingleShot = singleShot;
+      setLogLevel(logLevel);
+      std::string mutexName;
+      mutexName = "ArGenericCallbackList::";
+      mutexName += name;
+      mutexName += "::myDataMutex";
+      myDataMutex.setLogName(mutexName.c_str());
+      myLogging = true;
+    }
+  /// Destructor
+  virtual ~ArGenericCallbackList()
+    {
+    }
+  /// Adds a callback
+  void addCallback(GenericFunctor functor, int position = 50)
+    {
+      myDataMutex.lock();
+      myList.insert(
+	      std::pair<int, GenericFunctor>(-position, 
+					     functor));
+      myDataMutex.unlock();
+    }
+  /// Removes a callback
+  void remCallback(GenericFunctor functor)
+    {
+      myDataMutex.lock();
+      typename std::multimap<int, GenericFunctor>::iterator it;
+      
+      for (it = myList.begin(); it != myList.end(); it++)
+      {
+	if ((*it).second == functor)
+	{
+	  myList.erase(it);
+	  myDataMutex.unlock();
+	  remCallback(functor);
+	  return;
+	}
+      }
+      myDataMutex.unlock();
+    }
+  /// Sets the name
+  void setName(const char *name)
+    {
+      myDataMutex.lock();
+      myName = name;
+      myDataMutex.unlock();
+    }
+#ifndef SWIG
+  /// Sets the name with formatting
+  /** @swigomit use setName() */
+  void setNameVar(const char *name, ...)
+    {
+      char arg[2048];
+      va_list ptr;
+      va_start(ptr, name);
+      vsnprintf(arg, sizeof(arg), name, ptr);
+      arg[sizeof(arg) - 1] = '\0';
+      va_end(ptr);
+      return setName(arg);
+    }
+#endif
+  /// Sets the log level
+  void setLogLevel(ArLog::LogLevel logLevel)
+    {
+      myDataMutex.lock();
+      myLogLevel = logLevel;
+      myDataMutex.unlock();
+    }
+  /// Sets if its single shot
+  void setSingleShot(bool singleShot)
+    {
+      myDataMutex.lock();
+      mySingleShot = singleShot;
+      myDataMutex.unlock();
+    }
+  /// Enable or disable logging when invoking the list. Logging is enabled by default at the log level given in the constructor.
+  void setLogging(bool on) {
+    myLogging = on;
+  }
+protected:
+  ArMutex myDataMutex;
+  ArLog::LogLevel myLogLevel;
+  std::string myName;
+  std::multimap<int, GenericFunctor> myList;
+  bool mySingleShot;
+  bool myLogging;
+};
+
+/** A class to hold a list of callbacks to call sequentially. 
+  @ingroup UtilityClasses
+*/
+class ArCallbackList : public ArGenericCallbackList<ArFunctor *>
+{
+public:
+  /// Constructor
+  ArCallbackList(const char *name = "", 
+			  ArLog::LogLevel logLevel = ArLog::Verbose,
+			  bool singleShot = false) : 
+    ArGenericCallbackList<ArFunctor *>(name, logLevel, singleShot)
+    {
+    }
+  /// Destructor
+  virtual ~ArCallbackList()
+    {
+    }
+  /// Calls the callback list
+  void invoke(void)
+    {
+      myDataMutex.lock();
+      
+      std::multimap<int, ArFunctor *>::iterator it;
+      ArFunctor *functor;
+      
+      if(myLogging)
+	ArLog::log(myLogLevel, "%s: Starting calls", myName.c_str());
+      
+      for (it = myList.begin(); 
+	   it != myList.end(); 
+	   it++)
+      {
+	functor = (*it).second;
+	if (functor == NULL) 
+	  continue;
+	
+	if(myLogging)
+	{
+	  if (functor->getName() != NULL && functor->getName()[0] != '\0')
+	    ArLog::log(myLogLevel, "%s: Calling functor '%s' at %d",
+		       myName.c_str(), functor->getName(), -(*it).first);
+	  else
+	    ArLog::log(myLogLevel, "%s: Calling unnamed functor at %d", 
+		       myName.c_str(), -(*it).first);
+	}
+	functor->invoke();
+      }
+      
+      if(myLogging)
+	ArLog::log(myLogLevel, "%s: Ended calls", myName.c_str());
+      
+      if (mySingleShot)
+      {
+	if(myLogging)
+	  ArLog::log(myLogLevel, "%s: Clearing callbacks", myName.c_str());
+	myList.clear();
+      }
+      myDataMutex.unlock();
+    }
+protected:
+};
+
+/** A class to hold a list of callbacks to call with an argument of type P1
+    The functors added to the list must be pointers to a subclass of ArFunctor1<P1>.
+    Declare like this:
+    @code
+      ArCallbackList1<int> callbackList;
+    @endcode
+    then add a functor like this:
+    @code
+      ArFunctor1C<MyClass, int> func;
+      ...
+      callbackList.addCallback(&func);
+    @endcode
+    then invoke it like this:
+    @code
+      callbackList.invoke(23);
+    @endcode
+    @ingroup UtilityClasses
+**/
+template<class P1>
+class ArCallbackList1 : public ArGenericCallbackList<ArFunctor1<P1> *>
+{
+public:
+  /// Constructor
+  ArCallbackList1(const char *name = "", 
+			  ArLog::LogLevel logLevel = ArLog::Verbose,
+			  bool singleShot = false) : 
+    ArGenericCallbackList<ArFunctor1<P1> *>(name, logLevel, singleShot)
+    {
+    }
+  /// Destructor
+  virtual ~ArCallbackList1()
+    {
+    }
+  /// Calls the callback list
+  void invoke(P1 p1)
+    {
+      ArGenericCallbackList<ArFunctor1<P1> *>::myDataMutex.lock();
+      
+      typename std::multimap<int, ArFunctor1<P1> *>::iterator it;
+      ArFunctor1<P1> *functor;
+      
+      if(ArGenericCallbackList<ArFunctor1<P1> *>::myLogging)
+	ArLog::log(
+		ArGenericCallbackList<ArFunctor1<P1> *>::myLogLevel, 
+		"%s: Starting calls1", 
+		ArGenericCallbackList<ArFunctor1<P1> *>::myName.c_str());
+      
+      for (it = ArGenericCallbackList<ArFunctor1<P1> *>::myList.begin(); 
+	   it != ArGenericCallbackList<ArFunctor1<P1> *>::myList.end(); 
+	   it++)
+      {
+	functor = (*it).second;
+	if (functor == NULL) 
+	  continue;
+	
+	if(ArGenericCallbackList<ArFunctor1<P1> *>::myLogging)
+	{
+	  if (functor->getName() != NULL && functor->getName()[0] != '\0')
+	    ArLog::log(ArGenericCallbackList<ArFunctor1<P1> *>::myLogLevel,
+		       "%s: Calling functor '%s' at %d",
+		       ArGenericCallbackList<ArFunctor1<P1> *>::myName.c_str(), 
+		       functor->getName(), -(*it).first);
+	  else
+	    ArLog::log(ArGenericCallbackList<ArFunctor1<P1> *>::myLogLevel, 
+		       "%s: Calling unnamed functor at %d", 
+		       ArGenericCallbackList<ArFunctor1<P1> *>::myName.c_str(), 
+		       -(*it).first);
+	}
+	functor->invoke(p1);
+      }
+      
+      if(ArGenericCallbackList<ArFunctor1<P1> *>::myLogging)
+	ArLog::log(ArGenericCallbackList<ArFunctor1<P1> *>::myLogLevel, "%s: Ended calls", ArGenericCallbackList<ArFunctor1<P1> *>::myName.c_str());
+      
+      if (ArGenericCallbackList<ArFunctor1<P1> *>::mySingleShot)
+      {
+	if(ArGenericCallbackList<ArFunctor1<P1> *>::myLogging)
+	  ArLog::log(ArGenericCallbackList<ArFunctor1<P1> *>::myLogLevel, 
+		     "%s: Clearing callbacks", 
+		     ArGenericCallbackList<ArFunctor1<P1> *>::myName.c_str());
+	ArGenericCallbackList<ArFunctor1<P1> *>::myList.clear();
+      }
+      ArGenericCallbackList<ArFunctor1<P1> *>::myDataMutex.unlock();
+    }
+protected:
+};
+
+#ifndef ARINTERFACE
+#ifndef SWIG
+/// @internal
+class ArLaserCreatorHelper
+{
+public:
+  /// Creates an ArLMS2xx
+  static ArLaser *createLMS2xx(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArLMS2xx
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateLMS2xxCB(void);
+  /// Creates an ArUrg
+  static ArLaser *createUrg(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArUrg
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateUrgCB(void);
+  /// Creates an ArLMS1XX
+  static ArLaser *createLMS1XX(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArLMS1XX
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateLMS1XXCB(void);
+  /// Creates an ArUrg using SCIP 2.0
+  static ArLaser *createUrg_2_0(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArUrg
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateUrg_2_0CB(void);
+  /// Creates an ArS3Series
+  static ArLaser *createS3Series(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArS3Series
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateS3SeriesCB(void);
+  /// Creates an ArLMS5XX
+  static ArLaser *createLMS5XX(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArLMS5XX
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateLMS5XXCB(void);
+  /// Creates an ArTiM3XX
+  static ArLaser *createTiM3XX(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArTiM3XX
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateTiM3XXCB(void);
+  /// Creates an ArSZSeries
+  static ArLaser *createSZSeries(int laserNumber, const char *logPrefix);
+  /// Gets functor for creating an ArSZSeries
+  static ArRetFunctor2<ArLaser *, int, const char *> *getCreateSZSeriesCB(void);
+
+protected:
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourLMS2xxCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourUrgCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourLMS1XXCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourUrg_2_0CB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourS3SeriesCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourLMS5XXCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourTiM3XXCB;
+  static ArGlobalRetFunctor2<ArLaser *, int, const char *> ourSZSeriesCB;
+};
+
+/// @internal
+class ArBatteryMTXCreatorHelper
+{
+public:
+  /// Creates an ArBatteryMTX
+  static ArBatteryMTX *createBatteryMTX(int batteryNumber, const char *logPrefix);
+  /// Gets functor for creating an ArBatteryMTX
+  static ArRetFunctor2<ArBatteryMTX *, int, const char *> *getCreateBatteryMTXCB(void);
+
+protected:
+  static ArGlobalRetFunctor2<ArBatteryMTX *, int, const char *> ourBatteryMTXCB;
+};
+
+/// @internal
+class ArLCDMTXCreatorHelper
+{
+public:
+  /// Creates an ArLCDMTX
+  static ArLCDMTX *createLCDMTX(int lcdNumber, const char *logPrefix);
+  /// Gets functor for creating an ArLCDMTX
+  static ArRetFunctor2<ArLCDMTX *, int, const char *> *getCreateLCDMTXCB(void);
+
+protected:
+  static ArGlobalRetFunctor2<ArLCDMTX *, int, const char *> ourLCDMTXCB;
+};
+
+/// @internal
+class ArSonarMTXCreatorHelper
+{
+public:
+  /// Creates an ArSonarMTX
+  static ArSonarMTX *createSonarMTX(int sonarNumber, const char *logPrefix);
+  /// Gets functor for creating an ArSonarMTX
+  static ArRetFunctor2<ArSonarMTX *, int, const char *> *getCreateSonarMTXCB(void);
+
+protected:
+  static ArGlobalRetFunctor2<ArSonarMTX *, int, const char *> ourSonarMTXCB;
+};
+
+#endif // SWIG
+#endif // ARINTERFACE
+
+#ifndef SWIG
+/// @internal
+class ArDeviceConnectionCreatorHelper
+{
+public:
+  /// Creates an ArSerialConnection
+  static ArDeviceConnection *createSerialConnection(
+	  const char *port, const char *defaultInfo, const char *logPrefix);
+  /// Gets functor for creating an ArSerialConnection
+  static ArRetFunctor3<ArDeviceConnection *, const char *, const char *, 
+		       const char *> *getCreateSerialCB(void);
+
+  /// Creates an ArTcpConnection
+  static ArDeviceConnection *createTcpConnection(
+	  const char *port, const char *defaultInfo, const char *logPrefix);
+  /// Gets functor for creating an ArTcpConnection
+  static ArRetFunctor3<ArDeviceConnection *, const char *, const char *, 
+		       const char *> *getCreateTcpCB(void);
+
+  /// Creates an ArSerialConnection for RS422
+  static ArDeviceConnection *createSerial422Connection(
+	  const char *port, const char *defaultInfo, const char *logPrefix);
+  /// Gets functor for creating an ArSerialConnection
+  static ArRetFunctor3<ArDeviceConnection *, const char *, const char *,
+		       const char *> *getCreateSerial422CB(void);
+
+  /// Sets the success log level
+  static void setSuccessLogLevel(ArLog::LogLevel successLogLevel);
+  /// Sets the success log level
+  static ArLog::LogLevel setSuccessLogLevel(void);
+protected:
+  /// Internal Create ArSerialConnection
+  static ArDeviceConnection *internalCreateSerialConnection(
+	  const char *port, const char *defaultInfo, const char *logPrefix, bool is422);
+  static ArGlobalRetFunctor3<ArDeviceConnection *, const char *, const char *, 
+			     const char *> ourSerialCB;
+  static ArGlobalRetFunctor3<ArDeviceConnection *, const char *, const char *, 
+			     const char *> ourTcpCB;
+  static ArGlobalRetFunctor3<ArDeviceConnection *, const char *, const char *,
+			     const char *> ourSerial422CB;
+  static ArLog::LogLevel ourSuccessLogLevel;
+};
+#endif // SWIG
+
+/// Class for finding robot bounds from the basic measurements
+class ArPoseUtil
+{
+public:
+  AREXPORT static std::list<ArPose> findCornersFromRobotBounds(
+	  double radius, double widthLeft, double widthRight, 
+	  double lengthFront, double lengthRear, bool fastButUnsafe);
+  AREXPORT static std::list<ArPose> breakUpDistanceEvenly(ArPose start, ArPose end, 
+						 int resolution);
+};
+
+/// class for checking if something took too long and logging it
+class ArTimeChecker
+{
+public:
+  /// Constructor
+  AREXPORT ArTimeChecker(const char *name = "Unknown", int defaultMSecs = 100);
+  /// Destructor
+  AREXPORT virtual ~ArTimeChecker();
+  /// Sets the name
+  void setName(const char *name) { myName = name; }
+  /// Sets the default mSecs
+  void setDefaultMSecs(int defaultMSecs) { myMSecs = defaultMSecs; }
+  /// starts the check
+  AREXPORT void start(void);
+  /// checks, optionally with a subname (only one subname logged per cycle)
+  AREXPORT void check(const char *subName);
+  /// Finishes the check
+  AREXPORT void finish(void);
+  /// Gets the last time a check happened (a start counts as a check too)
+  ArTime getLastCheckTime() { return myLastCheck; }
+protected:
+  std::string myName;
+  int myMSecs;
+  ArTime myStarted;
+  ArTime myLastCheck;
+};
+
+#endif // ARIAUTIL_H
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARCOMMANDS_H
+#define ARCOMMANDS_H
+
+/// A class containing names for most robot microcontroller system commands
+/**
+   A class with an enum of the commands that can be sent to the robot, see the 
+   robot operations manual for more detailed descriptions.
+ @ingroup OptionalClasses
+*/
+class ArCommands
+{
+public:
+  enum Commands { 
+  PULSE = 0, ///< none, keep alive command, so watchdog doesn't trigger
+  OPEN = 1, ///< none, sent after connection to initiate connection
+  CLOSE = 2, ///< none, sent to close the connection to the robot
+  POLLING = 3, ///< string, string that sets sonar polling sequence
+  ENABLE = 4, ///< int, enable (1) or disable (0) motors
+  SETA = 5, ///< int, sets translational accel (+) or decel (-) (mm/sec/sec)
+  SETV = 6, ///< int, sets maximum velocity (mm/sec)
+  SETO = 7, ///< int, resets robots origin back to 0, 0, 0
+  MOVE = 8, ///< int, translational move (mm)
+  ROTATE = 9, ///< int, set rotational velocity, duplicate of RVEL (deg/sec)
+  SETRV = 10, ///< int, sets the maximum rotational velocity (deg/sec)
+  VEL = 11, ///< int, set the translational velocity (mm/sec)
+  HEAD = 12, ///< int, turn to absolute heading 0-359 (degrees)
+  DHEAD = 13, ///< int, turn relative to current heading (degrees)
+  //DROTATE = 14, does not really exist
+  SAY = 15, /**< string, makes the robot beep.
+	     up to 20 pairs of duration (20 ms incrs) and tones (halfcycle) */
+  JOYINFO = 17, // int, requests joystick packet, 0 to stop, 1 for 1, 2 for continuous
+  CONFIG = 18, ///< int, request configuration packet
+  ENCODER = 19, ///< int, > 0 to request continous stream of packets, 0 to stop
+  SETRVDIR = 20, ///< int, Sets the rot vel max in each direction
+  RVEL = 21, ///< int, set rotational velocity (deg/sec)
+  DCHEAD = 22, ///< int, colbert relative heading setpoint (degrees)
+  SETRA = 23, ///< int, sets rotational accel(+) or decel(-) (deg/sec)
+  SONAR = 28, ///< int, enable (1) or disable (0) sonar 
+  STOP = 29, ///< int, stops the robot
+  DIGOUT = 30, ///< int, sets the digout lines
+  //TIMER = 31, ... no clue about this one
+  VEL2 = 32, /**< int, independent wheel velocities,
+		first 8 bits = right, second 8 bits = left, multiplied by Vel2 divisor. See manual.  */
+  GRIPPER = 33, ///< int, gripper server command, see gripper manual for detail
+  //KICK = 34, um...
+  ADSEL = 35, ///< int, select the port given as argument
+  GRIPPERVAL = 36, ///< p2 gripper server value, see gripper manual for details
+  GRIPPERPACREQUEST = 37, ///< p2 gripper packet request
+  IOREQUEST = 40, ///< request iopackets from p2os
+  PTUPOS = 41, ///< most-sig byte is port number, least-sig byte is pulse width
+  TTY2 = 42, ///< string, send string argument to serial dev connected to aux1 
+  GETAUX = 43, ///< int, requests 1-200 bytes from aux1 serial channel, 0 flush
+  BUMPSTALL = 44, /**< int, stop and register a stall if front (1), rear (2),
+		   or both (3) bump rings are triggered, Off (default) is 0 */
+  TCM2 = 45, ///< TCM2 module commands, see tcm2 manual for details 
+  JOYDRIVE = 47, /**< Command to tell p2os to drive with the joystick 
+		    plugged into the robot */
+  MOVINGBLINK = 49, ///< int, 1 to blink lamp quickly before moving, 0 not to (for patrolbot)
+  HOSTBAUD = 50, ///< int, set baud rate for host port - 0=9600, 1=19200, 2=38400, 3=57600, 4=115200
+  AUX1BAUD = 51, ///< int, set baud rate for Aux1 - 0=9600, 1=19200, 2=38400, 3=57600, 4=115200
+  AUX2BAUD = 52, ///< int, set baud rate for Aux2 - 0=9600, 1=19200, 2=38400, 3=57600, 4=115200
+  ESTOP = 55, ///< none, emergency stop, overrides decel
+  ESTALL = 56, // ?
+  GYRO = 58, ///< int, set to 1 to enable gyro packets, 0 to disable
+  TTY4 = 60,
+  GETAUX3 = 61,
+  BATTERYINFO = 62, ///< int, requests battery info packets, 0 to stop, 1 for 1, 2 for continuous
+  TTY3 = 66,
+  GETAUX2 = 67,
+  BATTEST = 250,
+
+  // SRISIM specific:
+  LOADPARAM = 61, ///< @deprecated  only supported by SRISim. Conflicts with GETAUX3
+  OLDSIM_LOADPARAM = 61, ///< @deprecated only supported by SRISim. Conflicts with GETAUX3
+  ENDSIM = 62, ///< @deprecated use SIM_EXIT 
+  OLDSIM_EXIT = 62, ///< @deprecated use SIM_EXIT
+  LOADWORLD = 63, ///< @deprecated only supported by SRISim
+  OLDSIM_LOADWORLD = 63, ///< @deprecated only supported by SRISim
+  STEP = 64, ///< @deprecated only supported by SRISim
+  OLDSIM_STEP = 64, ///< @deprecated only supported by SRISim
+
+  // for calibrating the compass:
+  CALCOMP = 65, ///< int, commands for calibrating compass, see compass manual
+
+  // SRISIM specific:
+  // SETORIGINX and SETORIGINY overlap with TTY3 and GETAUX2 so they are disabled:
+  //SETSIMORIGINX = 66, 
+  //SETSIMORIGINY = 67, 
+  //OLDSIM_SETORIGINX = 66,
+  //OLDSIM_SETORIGINY = 67,
+  SETSIMORIGINTH = 68, ///< @deprecated use SIM_SET_POSE
+  OLDSIM_SETORIGINTH = 68, ///< @deprecated use SIM_SET_POSE
+  RESETSIMTOORIGIN = 69, ///< @deprecated use SIM_RESET
+  OLDSIM_RESETTOORIGIN = 69, ///< @deprecated use SIM_RESET
+
+  // AmigoBot-H8 specific:
+  SOUND = 90, ///< int, AmigoBot (old H8 model) specific, plays sound with given number
+  PLAYLIST = 91, /**< int, AmigoBot (old H8 model) specific, requests name of sound, 
+		    0 for all, otherwise for specific sound */
+  SOUNDTOG = 92, ///< int, AmigoBot (old H8 model) specific, enable(1) or diable(0) sound
+
+  // Power commands
+  POWER_PC = 95, ///< int, Powers on or off the PC (if the firwmare is set up to do this in its power settings)
+  POWER_LRF = 96, ///< int, Powers on or off the laser (if the firwmare is set up to do this in its power settings)
+  POWER_5V = 97, ///< int, Powers on or off the 5v accessories (if the firwmare is set up to do this in its power settings)
+  POWER_12V = 98, ///< int, Powers on or off the 12v accessories (if the firwmare is set up to do this in its power settings)
+  POWER_24V = 98, ///< int, Powers on or off the 24v accessories (if the firwmare is set up to do this in its power settings)
+  POWER_AUX_PC = 125, ///< int, Powers on or off the auxilliary PC (if the firwmare is set up to do this in its power settings)
+  POWER_TOUCHSCREEN = 126, ///< int, Powers on or off the touchscreen (if the firwmare is set up to do this in its power settings)
+  POWER_PTZ = 127, ///< int, Powers on or off the PTZ (if the firwmare is set up to do this in its power settings)
+  POWER_AUDIO = 128, ///< int, Powers on or off the audio (if the firwmare is set up to do this in its power settings)
+  POWER_LRF2 = 129, ///< int, Powers on or off the second laser (if the firwmare is set up to do this in its power settings)
+
+  // For SEEKUR or later lateral-capable robots
+  LATVEL = 110, ///< int, sets the lateral velocity (mm)
+  LATACCEL = 113, ///< int, sets the lateral acceleration (+, mm/sec2) or lateral deceleration (-, mm/sec2)
+  SETLATV = 0, /// set max. lat. vel. (not available yet)
+
+  // MTX commands
+  SRECORD = 210, /// < int, (for downloading MTX firmware) byte with 0 for wait, 1 for OK, -1 for ERROR (waiting might take 3-5 seconds
+  MARCDEBUG = 211, ///<  for debug messages from MARC, possibly responses, possibly pushed... they are ascii strings that should be logged
+  WHEEL_LIGHT = 212, ///<  For the wheel lights
+  ABSOLUTE_MAXES = 213, ///<  To set the absolute maxes
+
+  SAFETY_STATE_INFO = 214, ///< int, request safety state info packets (0 == stop, 1 == send once, 2 == send continuous),
+  SAFETY_SET_STATE = 215, ///< 2 bytes, first byte which system, second byte for value
+  SAFETY_DISABLE_POWER_OFF_TIMER = 216, ///< int, 0 set off, 1 set on
+
+
+  // MobileSim specific:
+  SIM_SET_POSE = 224,       ///< int4,int4,int4 Move robot to global pose in simulator (does not change odometry). Each value is a 4-byte integer.
+  SIM_RESET= 225,         ///< none, Reset robot's state to original in simulator and reset odometry to 0,0,0.
+  SIM_LRF_ENABLE = 230,   ///< int, 1 to begin sending packets of data from a simulated laser rangefinder (on the same socket connection), 2 to send extended-information laser packets (with reading flags), 0 to disable LRF
+  SIM_LRF_SET_FOV_START = 231,  ///< int Set angle (degrees from center) at which the simulater laser takes its first reading (normally -90).
+  SIM_LRF_SET_FOV_END = 232,  ///< int Set angle (degrees from center) at which the simulated laser takes its last reading (normally 90).
+  SIM_LRF_SET_RES = 233,  ///< int Set the number of degrees between laser readings (in combination with FOV, determines the number of readings per sweep) (normally 1)
+  SIM_CTRL = 236,         ///< int,..., Send a simulator meta-command (an operation on the simulator itself). The initial 2-byte integer argument selects the operation. See simulator documentation.
+  SIM_STAT = 237,         ///< none, Request that the simulator reply with a SIMSTAT (0x62) packet. You must have a packet handler registered with ArRobot to receive its output. See simulator documentation.
+  SIM_MESSAGE = 238,      ///< string, Display a log message in the simulator. Argument is a length-prefixed ASCII byte string.
+  SIM_EXIT = 239          ///< int, Exit the simulator. Argument is the exit code (use 0 for a "normal" exit).
+  };
+  
+};
+
+#endif // ARCOMMANDS_H
+
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+
+#ifndef ARACTIONBUMPERS_H
+#define ARACTIONBUMPERS_H
+
+#include "ariaTypedefs.h"
+#include "ArAction.h"
+
+/// Action to deal with if the bumpers trigger
+/**
+   This class basically responds to the bumpers the robot has, what
+   the activity things the robot has is decided by the param file.  If
+   the robot is going forwards and bumps into something with the front
+   bumpers, it will back up and turn.  If the robot is going backwards
+   and bumps into something with the rear bumpers then the robot will
+   move forward and turn.  
+
+  @ingroup ActionClasses
+*/
+
+class ArActionBumpers : public ArAction
+{
+public:
+  /// Constructor
+  AREXPORT ArActionBumpers(const char *name = "bumpers", 
+			   double backOffSpeed = 100, int backOffTime = 3000,
+			   int turnTime = 3000, bool setMaximums = false);
+  /// Destructor
+  AREXPORT virtual ~ArActionBumpers();
+  AREXPORT virtual ArActionDesired *fire(ArActionDesired currentDesired);
+  AREXPORT virtual ArActionDesired *getDesired(void) { return &myDesired; }
+#ifndef SWIG
+  AREXPORT virtual const ArActionDesired *getDesired(void) const 
+                                                        { return &myDesired; }
+#endif
+  AREXPORT double findDegreesToTurn(int bumpValue, int whichBumper);
+  AREXPORT virtual void activate(void);
+protected:
+  ArActionDesired myDesired;
+  bool mySetMaximums;
+  double myBackOffSpeed;
+  int myBackOffTime;
+  int myTurnTime;
+  //int myStopTime;
+  bool myFiring;
+  double mySpeed;
+  double myHeading;
+  int myBumpMask;
+  ArTime myStartBack;
+  //ArTime myStoppedSince;
+};
+
+#endif // ARACTIONBUMPERS
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARLMS2XX_H
+#define ARLMS2XX_H
+
+
+#include "ariaTypedefs.h"
+#include "ArLMS2xxPacket.h"
+#include "ArLMS2xxPacketReceiver.h"
+#include "ArRobotPacket.h"
+#include "ArLaser.h"   
+#include "ArFunctor.h"
+#include "ArCondition.h"
+
+/// Interface to a SICK LMS-200 laser range device
+/**
+ * This class processes incoming data from a SICK LMS-200
+ * laser rangefinding device in a background thread, and provides
+ * it through the standard ArRangeDevice API, to be used via ArRobot
+ * (see ArRobot::addRangeDevice()), used by an ArAction, or used directly.
+ *
+ * An ArSick instance must be connected to the laser through a serial port
+ * (or simulator): the typical procedure is to allow your ArSimpleConnector
+ * to configure the laser based on the robot connection type and command
+ * line parameters; then initiate the ArSick background thread; and finally
+ * connect ArSick to the laser device.
+ * For example:
+ * @code
+ *  ArRobot robot;
+ *  ArSick laser;
+ *  ArSimpleConnector connector(...);
+ *  ...
+ *   Setup the simple connector and connect to the robot --
+ *   see the example programs.
+ *  ...
+ *  connector.setupLaser(&laser);
+ *  laser.runAsync();
+ *  if(!laser.blockingConnect())
+ *  {
+ *    // Error...
+ *    ...
+ *  }
+ *  ...
+ * @endcode
+ *
+ * The most important methods in this class are the constructor, runAsync(), 
+ * blockingConnect(), getSensorPosition(), isConnected(), addConnectCB(),
+ * asyncConnect(), configure(), in addition to the ArRangeDevice interface. 
+ *
+ * @note The "extra int" on the raw readings returned by
+ * ArRangeDevice::getRawReadings() is like other laser
+ * devices and is the reflectance value, if enabled, ranging between 0 and 255.
+ *
+ * ArLMS2xx uses the following buffer parameters by default (see ArRangeDevice
+ * documentation):
+ * <dl>
+ *  <dt>MinDistBetweenCurrent <dd>50 mm
+ *  <dt>MaxDistToKeepCumulative <dd>6000 mm
+ *  <dt>MinDistBetweenCumulative <dd>200 mm
+ *  <dt>MaxSecondsToKeepCumulative <dd>30 sec
+ *  <dt>MaxINsertDistCumulative <dd>3000 mm
+ * </dl>
+ * The current buffer is replaced for each new set of readings.
+ *
+ * @since 2.7.0
+**/
+class ArLMS2xx : public ArLaser
+{
+public:
+  /// Constructor
+  AREXPORT ArLMS2xx(int laserNumber,
+		    const char *name = "lms2xx",
+		    bool appendLaserNumberToName = true);
+
+  /// Destructor
+  AREXPORT virtual ~ArLMS2xx();
+
+  /// Connect to the laser while blocking
+  AREXPORT virtual bool blockingConnect(void);
+  /// Connect to the laser asyncronously
+  AREXPORT bool asyncConnect(void);
+  /// Disconnect from the laser
+  AREXPORT virtual bool disconnect(void);
+  /// Sees if this is connected to the laser
+  AREXPORT virtual bool isConnected(void) 
+    { if (myState == STATE_CONNECTED) return true; else return false; }
+  AREXPORT virtual bool isTryingToConnect(void) 
+    { 
+      if (myState != STATE_CONNECTED && myState != STATE_NONE) 
+	return true; 
+      else if (myStartConnect)
+	return true;
+      else 
+	return false; 
+    }
+
+  /// Sets the device connection
+  AREXPORT virtual void setDeviceConnection(ArDeviceConnection *conn);
+
+  /** The internal function used by the ArRangeDeviceThreaded
+   *  @internal
+   */
+  AREXPORT virtual void * runThread(void *arg);
+  AREXPORT virtual void setRobot(ArRobot *robot);
+protected:
+  // The packet handler for when connected to the simulator
+  AREXPORT bool simPacketHandler(ArRobotPacket * packet);
+  // The function called if the laser isn't running in its own thread and isn't simulated
+  AREXPORT void sensorInterpCallback(void);
+  // An internal function for connecting to the sim
+  AREXPORT bool internalConnectSim(void);
+  /// An internal function, single loop event to connect to laser
+  AREXPORT int internalConnectHandler(void);
+  // The internal function which processes the sickPackets
+  AREXPORT void processPacket(ArLMS2xxPacket *packet, ArPose pose, 
+			      ArPose encoderPose, unsigned int counter,
+			      bool deinterlace, ArPose deinterlaceDelta);
+  // The internal function that gets does the work
+  AREXPORT void runOnce(bool lockRobot);
+  // Internal function, shouldn't be used, drops the conn because of error
+  AREXPORT void dropConnection(void);
+  // Internal function, shouldn't be used, denotes the conn failed
+  AREXPORT void failedConnect(void);
+  // Internal function, shouldn't be used, does the after conn stuff
+  AREXPORT void madeConnection(void);
+
+  /// Internal function that gets whether the laser is simulated or not (just for the old ArSick)
+  AREXPORT bool sickGetIsUsingSim(void);
+
+  /// Internal function that sets whether the laser is simulated or not (just for the old ArSick)
+  AREXPORT void sickSetIsUsingSim(bool usingSim);
+
+  /// internal function to runOnRobot so that ArSick can do that while this class won't
+  AREXPORT bool internalRunOnRobot(void);
+
+  /// Finishes getting the unset parameters from the robot then
+  /// setting some internal variables that need it
+  bool finishParams(void);
+
+  AREXPORT virtual bool laserCheckParams(void);
+
+  AREXPORT virtual void laserSetName(const char *name);
+
+  enum State {
+    STATE_NONE, ///< Nothing, haven't tried to connect or anything
+    STATE_INIT, ///< Initializing the laser
+    STATE_WAIT_FOR_POWER_ON, ///< Waiting for power on
+    STATE_CHANGE_BAUD, ///< Change the baud, no confirm here
+    STATE_CONFIGURE, ///< Send the width and increment to the laser
+    STATE_WAIT_FOR_CONFIGURE_ACK, ///< Wait for the configuration Ack
+    STATE_INSTALL_MODE, ///< Switch to install mode
+    STATE_WAIT_FOR_INSTALL_MODE_ACK, ///< Wait until its switched to install mode
+    STATE_SET_MODE, ///< Set the mode (mm/cm) and extra field bits
+    STATE_WAIT_FOR_SET_MODE_ACK, ///< Waiting for set-mode ack
+    STATE_START_READINGS, ///< Switch to monitoring mode
+    STATE_WAIT_FOR_START_ACK, ///< Waiting for the switch-mode ack
+    STATE_CONNECTED ///< We're connected and getting readings
+  };
+  /// Internal function for switching states
+  AREXPORT void switchState(State state);
+  State myState;
+  ArTime myStateStart;
+  ArFunctorC<ArLMS2xx> myRobotConnectCB;
+  ArRetFunctor1C<bool, ArLMS2xx, ArRobotPacket *> mySimPacketHandler;
+  ArFunctorC<ArLMS2xx> mySensorInterpCB;
+  std::list<ArSensorReading *>::iterator myIter;
+  bool myStartConnect;
+  bool myRunningOnRobot;
+
+  // range buffers to hold current range set and assembling range set
+  std::list<ArSensorReading *> *myAssembleReadings;
+  std::list<ArSensorReading *> *myCurrentReadings;
+
+  bool myProcessImmediately;
+  bool myInterpolation;
+  // list of packets, so we can process them from the sensor callback
+  std::list<ArLMS2xxPacket *> myPackets;
+
+  // these two are just for the sim packets
+  unsigned int myWhichReading;
+  unsigned int myTotalNumReadings;
+
+  // some variables so we don't have to do a tedios if every time
+  double myOffsetAmount;
+  double myIncrementAmount;
+
+  // packet stuff
+  ArLMS2xxPacket myPacket;
+  bool myUseSim;
+  
+  int myNumReflectorBits;
+  bool myInterlaced;
+
+  // stuff for the sim packet
+  ArPose mySimPacketStart;
+  ArTransform mySimPacketTrans;
+  ArTransform mySimPacketEncoderTrans;
+  unsigned int mySimPacketCounter;
+
+  // connection
+  ArLMS2xxPacketReceiver myLMS2xxPacketReceiver;
+
+  ArMutex myStateMutex;
+  ArRetFunctorC<bool, ArLMS2xx> myAriaExitCB;
+};
+
+
+#endif 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARLOGFILECONNECTION_H
+#define ARLOGFILECONNECTION_H
+
+#include "ArDeviceConnection.h"
+#include <string>
+#include <stdio.h>
+
+#include "ariaTypedefs.h"
+
+/// For connecting through a log file
+class ArLogFileConnection: public ArDeviceConnection
+{
+ public:
+  /// Constructor
+  AREXPORT ArLogFileConnection();
+  /// Destructor also closes connection
+  AREXPORT virtual ~ArLogFileConnection();
+
+  /// Opens a connection to the given host and port
+  AREXPORT int open(const char * fname = NULL);
+
+  AREXPORT void setLogFile(const char *fname = NULL);
+  AREXPORT virtual bool openSimple(void);  
+  AREXPORT virtual int getStatus(void);
+  AREXPORT virtual bool close(void);
+  AREXPORT virtual int read(const char *data, unsigned int size, 
+			    unsigned int msWait = 0);
+  AREXPORT virtual int write(const char *data, unsigned int size);
+  AREXPORT virtual const char * getOpenMessage(int messageNumber);
+  AREXPORT virtual ArTime getTimeRead(int index);
+  AREXPORT virtual bool isTimeStamping(void);
+
+  /// Gets the name of the host connected to
+  AREXPORT const char *getLogFile(void);
+
+  /* This doens't exist in the C++ file so I'm commenting it out
+  /// Gets the initial pose of the robot
+  AREXPORT ArPose getLogPose(void);
+  */
+
+  /// Internal function used by open and openSimple
+  AREXPORT int internalOpen(void);
+
+  enum Open { 
+      OPEN_FILE_NOT_FOUND = 1,  ///< Can't find the file
+      OPEN_NOT_A_LOG_FILE       ///< Doesn't look like a log file
+  };
+
+  // robot parameters
+  ArPose myPose;     
+  bool havePose;
+  char myName[100];
+  char myType[20];
+  char mySubtype[20];
+
+protected:
+  void buildStrMap(void);
+  ArStrMap myStrMap;
+
+  int myStatus;
+  int stopAfter;                // temp here for returning one packet at a time
+  
+  const char *myLogFile;
+  FILE *myFD;                   // file descriptor
+
+};
+
+#endif //ARLOGFILECONNECTION_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARNETSERVER_H
+#define ARNETSERVER_H
+
+#include "ariaTypedefs.h"
+#include "ArSocket.h"
+#include "ArFunctor.h"
+#include "ariaUtil.h"
+
+#include <list>
+
+
+class ArRobot;
+
+class ArArgumentBuilder;
+
+/// Class for running a simple net server to send/recv commands via text
+/**
+   This class is for running a simple server which will have a
+   list of commands to use and a fairly simple set of interactions...
+   Start the server with the open() function, add commands with the
+   addCommand() function and remove commands with remCommand(), and close
+   the server with the close() function.
+
+   A client can connect via TCP on the port provided to open() and send
+   a line of text where the first word is the command and the following
+   words are extra arguments or data (space separated).  The line should
+   end with a newline ("\n") or carriage return character.   The first
+   line sent should be a password and must match the password given to
+   open() in order to continue.
+
+   You can use the "telnet" program as a general client to any ArNetServer server.
+
+   It has a built in mutex, if you only use sendToAllClients() through
+   the normal commands or during the robot loop you don't need to
+   worry about locking anything and the server is locked before any of
+   the callbacks for the commands are called so you really only need
+   to lock the server if you're dealing with from another thread....
+   From another thread you can use sendToAllClientsNextCycle which
+   takes care of all the locking itself in a threadsafe way (it puts
+   the message in a list, then sends it in the next cycle of the
+   loop).  The only real reason to use the
+   lock/sendToAllClients/unlock method is if you're highly concerned
+   about synchronizing the different types of output.
+
+    @ingroup OptionalClasses
+**/
+class ArNetServer
+{
+public:
+  /// Constructor
+  AREXPORT ArNetServer(bool addAriaExitCB = true,
+		       bool doNotAddShutdownServer = false, 
+		       const char *name = "ArNetServer", 
+		       ArNetServer *childServer = NULL);
+  /// Destructor
+  AREXPORT ~ArNetServer();
+  
+  /// Initializes the server
+  AREXPORT bool open(ArRobot *robot, unsigned int port, 
+		     const char *password, bool multipleClients = true,
+		     const char *openOnIP = NULL);
+
+  /// Closes the server
+  AREXPORT void close(void);
+
+  /// Adds a new command
+  AREXPORT bool addCommand(const char *command, 
+			   ArFunctor3<char **, int, ArSocket *> *functor, 
+			   const char *help);
+
+  /// Removes a command
+  AREXPORT bool remCommand(const char *command);
+
+  /// Gets the name of this instance
+  const char *getName(void) { return myName.c_str(); }
+#ifndef SWIG
+  /** @brief Sends the given string to all the clients.  See also the
+   *  notes on locking in the class description.
+   *  @swigomit @sa
+   *  sendToAllClientsPlain()
+   */
+  AREXPORT void sendToAllClients(const char *str, ...);
+#endif
+
+  /// Sends the given string to all the clients, no varargs, wrapper for java
+  AREXPORT void sendToAllClientsPlain(const char *str);
+
+#ifndef SWIG
+  /** @brief Sends the given string to all the clients next cycle
+   *  @swigomit
+   *  @sa sendToAllClientsNextCyclePlain()
+   */
+  AREXPORT void sendToAllClientsNextCycle(const char *str, ...);
+#endif
+
+  /// Sends the given string to all the clients next cycle, no varargs
+  AREXPORT void sendToAllClientsNextCyclePlain(const char *str);
+
+  /// Sends the given string to all the clients next cycle, no varargs... helper for config changes
+  AREXPORT bool sendToAllClientsNextCyclePlainBool(const char *str);
+
+#ifndef SWIG
+  /** @brief Sends the given string to the (hopefully) the client given (this method may go away)
+   *  @swigomit
+   *  @sa sendToClientPlain()
+   */
+  AREXPORT void sendToClient(ArSocket *socket, const char *ipString,
+			     const char *str, ...);
+#endif
+
+  /// Sends the given plain string to the (hopefully) the client given (this method may go away)
+  AREXPORT void sendToClientPlain(ArSocket *socket, const char *ipString,
+				  const char *str);
+
+  /// Sees if the server is running and open
+  AREXPORT bool isOpen(void);
+
+  /// Sets whether we are logging all data sent or not
+  AREXPORT void setLoggingDataSent(bool loggingData);
+  
+  /// Gets whether we are logging all data sent or not
+  AREXPORT bool getLoggingDataSent(void);
+
+  /// Sets whether we are logging all data received or not
+  AREXPORT void setLoggingDataReceived(bool loggingData);
+  
+  /// Gets whether we are logging all data received or not
+  AREXPORT bool getLoggingDataReceived(void);
+
+  /// Sets whether we're using the wrong (legacy) end chars or not
+  AREXPORT void setUseWrongEndChars(bool useWrongEndChars);
+
+  /// Gets whether we're using the wrong (legacy) end chars or not
+  AREXPORT bool getUseWrongEndChars(void);
+
+  /// the internal sync task we use for our loop
+  AREXPORT void runOnce(void);
+
+  /// the internal function that gives the greeting message
+  AREXPORT void internalGreeting(ArSocket *socket);
+  
+  /// The internal function that does the help
+  AREXPORT void internalHelp(ArSocket *socket);
+  /// The internal function for the help cb
+  AREXPORT void internalHelp(char **argv, int argc, ArSocket *socket);
+  /// The internal function for echo
+  AREXPORT void internalEcho(char **argv, int argc, ArSocket *socket);
+  /// The internal function for closing this connection
+  AREXPORT void internalQuit(char **argv, int argc, ArSocket *socket);
+  /// The internal function for shutting down
+  AREXPORT void internalShutdownServer(char **argv, int argc, 
+				       ArSocket *socket);
+  /// The internal function for parsing a command on a socket
+  AREXPORT void parseCommandOnSocket(ArArgumentBuilder *args, 
+				     ArSocket *socket, bool allowLog = true);
+  /// The internal function that adds a client to our list
+  AREXPORT void internalAddSocketToList(ArSocket *socket);
+  /// The internal function that adds a client to our delete list
+  AREXPORT void internalAddSocketToDeleteList(ArSocket *socket);
+  /// This squelchs all the normal commands and help
+  AREXPORT void squelchNormal(void);
+  /// Sets an extra string that the server holds for passing around
+  AREXPORT void setExtraString(const char *str) { myExtraString = str; }
+  /// Gets an extra string that the server holds for passing around
+  AREXPORT const char *getExtraString(void) { return myExtraString.c_str(); }
+  /// Lock the server
+  AREXPORT int lock() {return(myMutex.lock());}
+  /// Try to lock the server without blocking
+  AREXPORT int tryLock() {return(myMutex.tryLock());}
+  /// Unlock the server
+  AREXPORT int unlock() {return(myMutex.unlock());}
+protected:
+  std::string myName;
+  ArNetServer *myChildServer;
+  ArMutex myMutex;
+  ArSocket myAcceptingSocket;
+  std::map<std::string, ArFunctor3<char **, int, ArSocket *> *, ArStrCaseCmpOp> myFunctorMap;
+  std::map<std::string, std::string, ArStrCaseCmpOp> myHelpMap;
+  bool myLoggingDataSent;
+  bool myLoggingDataReceived;
+  bool myUseWrongEndChars;
+  bool myOpened;
+  bool myWantToClose;
+  bool mySquelchNormal;
+  ArSocket myServerSocket;
+  ArRobot *myRobot;
+  std::string myPassword;
+  bool myMultipleClients;
+  unsigned int myPort;
+  std::string myExtraString;
+  std::list<ArSocket *> myConns;
+  std::list<ArSocket *> myConnectingConns;
+  std::list<ArSocket *> myDeleteList;
+  
+  ArMutex myNextCycleSendsMutex;
+  std::list<std::string> myNextCycleSends;
+  
+  ArFunctorC<ArNetServer> myTaskCB;
+  ArFunctor3C<ArNetServer, char **, int, ArSocket *> myHelpCB;
+  ArFunctor3C<ArNetServer, char **, int, ArSocket *> myEchoCB;
+  ArFunctor3C<ArNetServer, char **, int, ArSocket *> myQuitCB;
+  ArFunctor3C<ArNetServer, char **, int, ArSocket *> myShutdownServerCB;
+  ArFunctorC<ArNetServer> myAriaExitCB;
+};
+
+#endif // ARNETSERVER_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARPRIORITYRESOLVER_H
+#define ARPRIORITYRESOLVER_H
+
+#include "ArResolver.h"
+
+/// (Default resolver), takes the action list and uses the priority to resolve
+/** 
+    This is the default resolver for ArRobot, meaning if you don't do a 
+    non-normal init on the robot, or a setResolver, you'll have one these.
+*/
+class ArPriorityResolver : public ArResolver
+{
+public:
+  /// Constructor
+  AREXPORT ArPriorityResolver();
+  /// Destructor
+  AREXPORT virtual ~ArPriorityResolver();
+  AREXPORT virtual ArActionDesired *resolve(ArResolver::ActionMap *actions,
+					    ArRobot *robot,
+					    bool logActions = false);
+protected:
+  ArActionDesired myActionDesired;
+};
+
+#endif // ARPRIORITYRESOLVER_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARLASERCONNECTOR_H
+#define ARLASERCONNECTOR_H
+
+#include "ariaTypedefs.h"
+#include "ArSerialConnection.h"
+#include "ArTcpConnection.h"
+#include "ArArgumentBuilder.h"
+#include "ArArgumentParser.h"
+#include "ariaUtil.h"
+#include "ArRobotConnector.h"
+
+class ArLaser;
+class ArRobot;
+
+
+
+/// Create laser interface objects (for any kind of laser supported by ARIA) and connect to lasers based on parameters from robot parameter file and command-line arguments
+/**
+
+   ArLaserConnector makes a laser connection (e.g. through serial port, 
+   TCP network connection, or to simulator connection as a special case if
+   the robot connection is to a simulator.)
+   Parameters are configurable through command-line arguments or in the robot
+   parameter file. 
+
+  
+   When you create your ArLaserConnector, pass it command line parameters via
+   either the argc and argv variables from main(), or pass it an
+   ArArgumentBuilder or ArArgumentParser object. (ArArgumentBuilder
+   is able to obtain command line parameters from a Windows program
+   that uses WinMain() instead of main()).
+   ArLaserConnector registers a callback with the global Aria class. Use
+   Aria::parseArgs() to parse all command line parameters to the program, and
+   Aria::logOptions() to print out information about all registered command-line parameters.
+   ArLaserConnector will be included in these.
+
+   Then, to connect to any lasers that were set up in the robot parameter file or
+   via command line arguments, call connectLasers().  If successful, 
+   connectLasers() will return true and add an entry for each laser connected
+   in the ArRobot object's list of lasers.  These ArLaser objects can be
+   accessed from your ArRobot object via ArRobot::findLaser() or ArRobot::getLaserMap(). 
+   
+   (The internal interface used by ARIA to connect to configured lasers and add
+   them to ArRobot is also
+   available if you need to use it: See addLaser(); but this is normally not
+neccesary for almost all cases.)
+
+   The following command-line arguments are checked:
+   @verbinclude ArLaserConnector_options
+
+   @since 2.7.0
+   @ingroup ImportantClasses
+   @ingroup DeviceClasses
+ **/
+class ArLaserConnector
+{
+public:
+  /// Constructor that takes argument parser
+  AREXPORT ArLaserConnector(
+	  ArArgumentParser *parser, 
+	  ArRobot *robot, ArRobotConnector *robotConnector,
+	  bool autoParseArgs = true,
+	  ArLog::LogLevel infoLogLevel = ArLog::Verbose,
+	  ArRetFunctor1<bool, const char *> *turnOnPowerOutputCB = NULL,
+	  ArRetFunctor1<bool, const char *> *turnOffPowerOutputCB = NULL);
+  /// Destructor
+  AREXPORT ~ArLaserConnector(void);
+  /// Connects all the lasers the robot has that should be auto connected
+  AREXPORT bool connectLasers(bool continueOnFailedConnect = false,
+			      bool addConnectedLasersToRobot = true,
+			      bool addAllLasersToRobot = false,
+			      bool turnOnLasers = true,
+			      bool powerCycleLaserOnFailedConnect = true,
+			      int *failedOnLaser = NULL);
+  /// Sets up a laser to be connected
+  AREXPORT bool setupLaser(ArLaser *laser, 
+			   int laserNumber = 1);
+  /// Connects the laser synchronously (will take up to a minute)
+  AREXPORT bool connectLaser(ArLaser *laser,
+			     int laserNumber = 1,
+			     bool forceConnection = true);
+  /// Adds a laser so parsing will get it
+  AREXPORT bool addLaser(ArLaser *laser,
+			 int laserNumber = 1);
+  /// Adds a laser for parsing but where connectLaser will be called later
+  AREXPORT bool addPlaceholderLaser(ArLaser *placeholderLaser,
+				    int laserNumber = 1,
+				    bool takeOwnershipOfPlaceholder = false);
+  /// Function to parse the arguments given in the constructor
+  AREXPORT bool parseArgs(void);
+  /// Function to parse the arguments given in an arbitrary parser
+  AREXPORT bool parseArgs(ArArgumentParser *parser);
+  /// Log the options the simple connector has
+  AREXPORT void logOptions(void) const;
+  /// Internal function to get the laser (only useful between parseArgs and connectLasers)
+  AREXPORT ArLaser *getLaser(int laserNumber);
+
+  /// Internal function to replace the laser (only useful between parseArgs and connectLasers) but not the laser data
+  AREXPORT bool replaceLaser(ArLaser *laser, int laserNumber);
+  
+protected:
+  /// Class that holds information about the laser data
+  class LaserData
+  {
+  public:
+    LaserData(int number, ArLaser *laser, 
+	      bool laserIsPlaceholder = false, bool ownPlaceholder = false)
+      { 
+	myNumber = number; 
+	myLaser = laser; 
+	myConn = NULL;
+	myLaserIsPlaceholder = laserIsPlaceholder;
+	myOwnPlaceholder = ownPlaceholder;
+	myConnect = false; myConnectReallySet = false;
+	myPort = NULL; 
+	myPortType = NULL;
+	myRemoteTcpPort = 0; myRemoteTcpPortReallySet = false;
+	myFlipped = false; myFlippedReallySet = false; 
+	myDegreesStart = HUGE_VAL; myDegreesStartReallySet = false; 
+	myDegreesEnd = -HUGE_VAL; myDegreesEndReallySet = false; 
+	myDegrees = NULL; 
+	myIncrementByDegrees = -HUGE_VAL; myIncrementByDegreesReallySet = false; 
+	myIncrement = NULL; 
+	myUnits = NULL; 
+	myReflectorBits = NULL;
+	myPowerControlled = true; myPowerControlledReallySet = false; 
+	myStartingBaud = NULL;
+	myAutoBaud = NULL;
+	myMaxRange = INT_MAX; myMaxRangeReallySet = false; 
+	myAdditionalIgnoreReadings = NULL;
+      }
+    virtual ~LaserData() {}
+    /// The number of this laser
+    int myNumber;
+    /// The actual pointer to this laser
+    ArLaser *myLaser;
+    // our connection
+    ArDeviceConnection *myConn;
+    /// If the laser is a placeholder for parsing
+    bool myLaserIsPlaceholder;
+    /// If we own the placeholder laser
+    bool myOwnPlaceholder;
+    // if we want to connect the laser
+    bool myConnect;
+    // if myConnect was really set
+    bool myConnectReallySet;
+    // the port we want to connect the laser on
+    const char *myPort;
+    // the type of port we want to connect to the laser on
+    const char *myPortType;
+    // laser tcp port if we're doing a remote host
+    int myRemoteTcpPort;  
+    // if our remote laser tcp port was really set
+    bool myRemoteTcpPortReallySet;
+    // if we have the laser flipped
+    bool myFlipped;
+    // if our flipped was really set
+    bool myFlippedReallySet;
+    // what degrees to start at 
+    double myDegreesStart;
+    // if our start degrees was really set
+    bool myDegreesStartReallySet;
+    // what degrees to end at 
+    double myDegreesEnd;
+    // if our end degrees was really set
+    bool myDegreesEndReallySet;
+    // the degrees we want wto use
+    const char *myDegrees;
+    // what increment to use
+    double myIncrementByDegrees;
+    // if our end degrees was really set
+    bool myIncrementByDegreesReallySet;
+    // the increment we want to use
+    const char *myIncrement;
+    /// the units we want to use 
+    const char *myUnits;
+    /// the reflector bits we want to use 
+    const char *myReflectorBits;
+    // if we are controlling the laser power
+    bool myPowerControlled;
+    // if our flipped was really set
+    bool myPowerControlledReallySet;
+    /// the starting baud we want to use
+    const char *myStartingBaud;
+    /// the auto baud we want to use
+    const char *myAutoBaud;
+    // if we set a new max range from the command line
+    int myMaxRange;
+    // if our new max range was really set
+    bool myMaxRangeReallySet;
+    /// the additional laser ignore readings
+    const char *myAdditionalIgnoreReadings;
+  };
+  std::map<int, LaserData *> myLasers;
+  
+  /// Parses the laser arguments
+  AREXPORT bool parseLaserArgs(ArArgumentParser *parser, 
+			       LaserData *laserData);
+  /// Logs the laser command line option help text. 
+  AREXPORT void logLaserOptions(LaserData *laserdata, bool header = true, bool metaOpts = true) const;
+  // Sets the laser parameters
+  bool internalConfigureLaser(LaserData *laserData);
+
+  std::string myLaserTypes;
+
+  // our parser
+  ArArgumentParser *myParser;
+  bool myOwnParser;
+  // if we should autoparse args or toss errors 
+  bool myAutoParseArgs;
+  bool myParsedArgs;
+
+  ArRobot *myRobot;
+  ArRobotConnector *myRobotConnector;
+
+  ArLog::LogLevel myInfoLogLevel;
+
+  ArRetFunctor1<bool, const char *> *myTurnOnPowerOutputCB;
+  ArRetFunctor1<bool, const char *> *myTurnOffPowerOutputCB;
+
+  ArRetFunctorC<bool, ArLaserConnector> myParseArgsCB;
+  ArConstFunctorC<ArLaserConnector> myLogOptionsCB;
+};
+
+#endif // ARLASERCONNECTOR_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARINTERPOLATION_H
+#define ARINTERPOLATION_H
+
+#include "ariaTypedefs.h"
+#include "ariaUtil.h"
+
+/** 
+    This class takes care of storing in readings of position vs time, and then
+    interpolating between them to find where the robot was at a particular 
+    point in time.  It has two lists, one containing the times, and one 
+    containing the positions at those same times (per position), they must be 
+    walked through jointly to maintain cohesion.  The new entries are at the
+    front of the list, while the old ones are at the back.  
+    numberOfReadings and the setNumberOfReadings control the number of entries
+    in the list.  If a size is set that is smaller than the current size, then
+    the old ones are chopped off.
+    
+    This class now has a couple of variables for when it allows
+    prediction, they're set with setAllowedMSForPrediction and
+    setAllowedPercentageForPrediction.  If either is below 0 than they
+    are ignored (if both are below 0 it means any prediction is
+    allowed, which would be bad).  Previous there was no MS limit, and
+    the percentage limit was 50 (and so that is what the default is
+    now).
+**/
+class ArInterpolation
+{
+public:
+  /// Constructor
+  AREXPORT ArInterpolation(size_t numberOfReadings = 100);
+  /// Destructor
+  AREXPORT virtual ~ArInterpolation();
+  /// Adds a new reading
+  AREXPORT bool addReading(ArTime timeOfReading, ArPose position);
+  /// Finds a position
+  AREXPORT int getPose(ArTime timeStamp, ArPose *position, 
+		       ArPoseWithTime *lastData = NULL);
+  /// Sets the name
+  AREXPORT void setName(const char *name);
+  /// Gets the name
+  AREXPORT const char *getName(void);
+  /// Sets the allowed milliseconds for prediction
+  AREXPORT void setAllowedMSForPrediction(int ms = -1);
+  /// Sets the allowed milliseconds for prediction
+  AREXPORT int getAllowedMSForPrediction(void);
+  /// Sets the allowed percentage for prediction
+  AREXPORT void setAllowedPercentageForPrediction(int percentage = 5000);
+  /// Sets the allowed milliseconds for prediction
+  AREXPORT int getAllowedPercentageForPrediction(void);
+  /// Sets if we should log events for this interpolation
+  AREXPORT void setLogPrediction(bool logPrediction = false);
+  /// Gets if we should log events for this interpolation
+  AREXPORT bool getLogPrediction(void);
+  /// Sets the number of readings this instance holds back in time
+  AREXPORT void setNumberOfReadings(size_t numberOfReadings);
+  /// Gets the number of readings this instance holds back in time
+  AREXPORT size_t getNumberOfReadings(void) const;
+  /// Empties the interpolated positions
+  AREXPORT void reset(void);
+protected:
+  ArMutex myDataMutex;
+  std::string myName;
+  std::list<ArTime> myTimes;
+  std::list<ArPose> myPoses;
+  size_t mySize;
+  bool myLogPrediction;
+  int myAllowedMSForPrediction;
+  int myAllowedPercentageForPrediction;
+};
+
+#endif
+                                              /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARLASERREFLECTORDEVICE_H
+#define ARLASERREFLECTORDEVICE_H
+
+#include "ariaTypedefs.h"
+#include "ArRangeDevice.h"
+#include "ArFunctor.h"
+
+class ArSick;
+class ArRobot;
+
+/// A class for keeping track of laser reflectors that we see right now
+/** 
+    This class is for showing the laser reflectors in MobileEyes.
+    This requires that the range device you pass in uses the
+    'extraInt' in the rawReadings ArSensorReading to note reflector
+    value and that anything greater than 0 is a reflector.
+*/
+class ArLaserReflectorDevice : public ArRangeDevice
+{
+public:
+  /// Constructor
+  AREXPORT ArLaserReflectorDevice(ArRangeDevice *laser, ArRobot *robot,
+				  const char * name = "reflector");
+  /// Destructor
+  AREXPORT virtual ~ArLaserReflectorDevice();
+  /// Grabs the new readings from the robot and adds them to the buffers
+  AREXPORT void processReadings(void);
+  /// Specifically does nothing since it was done in the constructor
+  AREXPORT virtual void setRobot(ArRobot *robot);
+  /// Adds a reflector threshold to the task
+  AREXPORT void addToConfig(ArConfig *config, const char *section);
+protected:
+  ArRangeDevice *myLaser;
+  int myReflectanceThreshold;
+  ArFunctorC<ArLaserReflectorDevice> myProcessCB;
+};
+
+
+#endif // ARLASERREFLECTORDEVICE_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           # Set root logger level to DEBUG and its only appender to DEBUG.
+log4j.rootLogger=WARN, DEBUG
+
+# DEBUG is set to be a ConsoleAppender.
+log4j.appender.DEBUG=org.apache.log4j.ConsoleAppender
+log4j.appender.DEBUG.layout=org.apache.log4j.PatternLayout
+log4j.appender.DEBUG.layout.ConversionPattern=%-5p [%t] (%F:%L) - %m%n
+#%-4r [%t] %-5p %c %x - %m%n
+
+# package specific levels
+#log4j.logger.org.llrp.ltk = DEBUG
+#log4j.logger.org.llrp.ltkGenerator = INFO
+#log4j.logger.de.hunsicker = ERROR
+
+
+log4j.appender.FileAppender=org.apache.log4j.RollingFileAppender
+log4j.appender.FileAppender.Threshold=INFO
+log4j.appender.FileAppender.layout=org.apache.log4j.PatternLayout
+log4j.appender.FileAppender.layout.ConversionPattern=%-5p [%t] (%F:%L) - %m%n
+log4j.appender.FileAppender.File=HelloWorld.log
+log4j.appender.FileAppender.MaxFileSize=1MB
+log4j.appender.FileAppender.MaxBackupIndex=1                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARRANGEBUFFER_H
+#define ARRANGEBUFFER_H
+
+#include "ariaUtil.h"
+#include "ariaTypedefs.h"
+#include "ArTransform.h"
+#include <list>
+#include <vector>
+
+/// This class is a buffer that holds ranging information
+class ArRangeBuffer
+{
+public:
+  /// Constructor
+  AREXPORT ArRangeBuffer(int size);
+  /// Destructor
+  AREXPORT virtual ~ArRangeBuffer();
+  /// Gets the size of the buffer
+  AREXPORT size_t getSize(void) const;
+  /// Sets the size of the buffer
+  AREXPORT void setSize(size_t size);
+  /// Gets the pose of the robot when readings were taken
+  AREXPORT ArPose getPoseTaken() const;
+  /// Sets the pose of the robot when readings were taken
+  AREXPORT void setPoseTaken(ArPose p);
+  /// Gets the encoder pose of the robot when readings were taken
+  AREXPORT ArPose getEncoderPoseTaken() const;
+  /// Sets the pose of the robot when readings were taken
+  AREXPORT void setEncoderPoseTaken(ArPose p);
+  /// Adds a new reading to the buffer
+  AREXPORT void addReading(double x, double y);
+  /// Adds a new reading to the buffer if some conditions are met
+  AREXPORT void addReadingConditional(double x, double y, 
+				      double closeDistSquared, 
+				      bool *wasAdded = NULL);
+  /// Begins a walk through the getBuffer list of readings
+  AREXPORT void beginInvalidationSweep(void);
+  /// While doing an invalidation sweep a reading to the list to be invalidated
+  AREXPORT void invalidateReading(std::list<ArPoseWithTime*>::iterator readingIt);
+  /// Ends the invalidation sweep
+  AREXPORT void endInvalidationSweep(void);
+#ifndef SWIG
+  /** @brief Gets a pointer to a list of readings
+   *  @swigomit
+   */
+  AREXPORT const std::list<ArPoseWithTime *> *getBuffer(void) const;
+#endif
+  /// Gets a pointer to a list of readings
+  AREXPORT std::list<ArPoseWithTime *> *getBuffer(void);
+
+  /// Gets the closest reading, on a polar system 
+  AREXPORT double getClosestPolar(double startAngle, double endAngle, 
+				  ArPose position, unsigned int maxRange,
+				  double *angle = NULL) const;
+  /// Gets the closest reading, from a rectangular box, in robot LOCAL coords
+  AREXPORT double getClosestBox(double x1, double y1, double x2, double y2,
+				ArPose position, unsigned int maxRange, 
+				ArPose *readingPos = NULL,
+				ArPose targetPose = ArPose(0, 0, 0)) const;
+  /// Applies a transform to the buffer
+  AREXPORT void applyTransform(ArTransform trans);
+  /// Clears all the readings in the range buffer
+  AREXPORT void clear(void);
+  /// Resets the readings older than this many seconds
+  AREXPORT void clearOlderThan(int milliSeconds);
+  /// Resets the readings older than this many seconds
+  AREXPORT void clearOlderThanSeconds(int seconds);
+  /// same as clear, but old name
+  AREXPORT void reset(void);
+  /// This begins a redoing of the buffer
+  AREXPORT void beginRedoBuffer(void);
+  /// Add a reading to the redoing of the buffer
+  AREXPORT void redoReading(double x, double y);   
+  /// End redoing the buffer
+  AREXPORT void endRedoBuffer(void);
+  /// Gets the buffer as an array instead of as a std::list
+  AREXPORT std::vector<ArPoseWithTime> *getBufferAsVector(void);
+  /// Gets the closest reading, from an arbitrary buffer
+  AREXPORT static double getClosestPolarInList(
+	  double startAngle, double endAngle, ArPose position, 
+	  unsigned int maxRange, double *angle, 
+	  const std::list<ArPoseWithTime *> *buffer);
+  /// Gets the closest reading, from an arbitrary buffer
+  AREXPORT static double getClosestBoxInList(
+	  double x1, double y1, double x2, double y2, ArPose position, 
+	  unsigned int maxRange, ArPose *readingPos, 
+	  ArPose targetPose, const std::list<ArPoseWithTime *> *buffer);
+protected:
+  std::vector<ArPoseWithTime> myVector;
+  ArPose myBufferPose;		// where the robot was when readings were acquired
+  ArPose myEncoderBufferPose;		// where the robot was when readings were acquired
+
+  std::list<ArPoseWithTime *> myBuffer;
+  std::list<ArPoseWithTime *> myInvalidBuffer;
+  std::list<std::list<ArPoseWithTime *>::iterator > myInvalidSweepList;
+  std::list<std::list<ArPoseWithTime *>::iterator >::iterator myInvalidIt;
+  std::list<ArPoseWithTime *>::iterator myRedoIt;
+  int myNumRedone;
+  bool myHitEnd;
+  
+  size_t mySize;
+  std::list<ArPoseWithTime *>::reverse_iterator myRevIterator;
+  std::list<ArPoseWithTime *>::iterator myIterator;
+  
+  ArPoseWithTime * myReading;
+};
+
+#endif // ARRANGEBUFFER_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   /*
+Adept MobileRobots Robotics Interface for Applications (ARIA)
+Copyright (C) 2004-2005 ActivMedia Robotics LLC
+Copyright (C) 2006-2010 MobileRobots Inc.
+Copyright (C) 2011-2014 Adept Technology
+
+     This program is free software; you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation; either version 2 of the License, or
+     (at your option) any later version.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program; if not, write to the Free Software
+     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+If you wish to redistribute ARIA under different terms, contact 
+Adept MobileRobots for information about a commercial version of ARIA at 
+robots@mobilerobots.com or 
+Adept MobileRobots, 10 Columbia Drive, Amherst, NH 03031; +1-603-881-7960
+*/
+#ifndef ARRANGEDEVICELASER_H
+#define ARRANGEDEVICELASER_H
+
+#include "ariaTypedefs.h"
+#include "ArRangeDeviceThreaded.h"
+
+class ArDeviceConnection;
+
+
+
+/** ArRangeDevice interface specialized for laser rangefinder sensors; see
+ * ArRangeDevice for more data access methods.
+
+   This class is a subclass of ArRangeDeviceThreaded meant for any
+   planar scanning lasers, like the SICK lasers, Hokoyo URG series
+   lasers, etc.  Unlike other base classes this contains the superset
+   of everything that may need to be configured on any of the sensors,
+   even though some subclasses may only provide some of those parameters
+   and features. (This allows the configuration interfaces and parameter
+   files to work for any laser type.)
+
+   Normally, a program does not define or create any ArLaser objects
+   directly. Instead,
+   objects (device-specific subclasses of ArLaser) are created by ArLaserConnector::connectLasers()
+   based on the robot parameter file and command line arguments, and
+   the resulting ArLaser objects are stored in the ArRobot object
+   Use ArRobot::getLaserMap() or ArRobot::findLaser() to access the ArLaser
+   objects after calling ArLaserConnector::connectLasers(). 
+
+   The
+   canSetDegrees(), canChooseRange(), canSetIncrement(),
+   canChooseIncrement(), canChooseUnits(), canChooseReflectorBits(),
+   canSetPowerControlled(), canChooseStartBaud(), and canChooseAutoBaud()  and
+other similar functions are used by ArLaserConnector to test if a parameter
+   is relevant to a specific laser type.
+
+
+   @par Creating New ArLaser Subclasses
+   If you want to create your own new class to implement a sensor
+   not in ARIA, create a subclass of this class.  ArUrg
+   is the best current example of this.
+   Call the laserAllow* 
+   functions in its constructor depending on what features
+   that laser sensor has (use the laserAllowSet* functions if it is possible
+   to set any value in a range, or use the laserAllow*Choices functions if it
+   is only possible to set specific values).
+   You may also want to use the override the laserSetName
+   call so that your own mutexes will get named appropriately.  You
+   can use laserSetDefaultTcpPort to set the default TCP port (which
+   you should do if the laser normally is connected to over TCP).  You
+   can use laserSetDefaultPortType to the type of port normally used
+   (so that if a port is passed in we can make a reasonable guess as
+   to what type, so that people don't always have to pass in a type).
+   Before you connect you should call laserPullUnsetParams to fill in
+   the parameters that weren't set explicitly with the default ones in
+   the .p files.  If the maximum range of the laser changes depending
+   on settings (like on the LMS2xx) you should call
+   laserSetAbsoluteMaxRange (after you call
+   laserPullUnsetParamsFromRobot).  Implement the blockingConnect,
+   asyncConnect, disconnect, isConnected, and isTryingToConnect
+   calls... while calling laserConnect, laserFailedConnect,
+   laserDisconnectNormally, and laserDisconnectOnError calls to let
+   the laser base class call the appropriate callbacks.  You should
+   use the laserCheckLostConnection in your runThread to see if the
+   laser has lost connection (see its documentation for details).
+   Then after you get your readings call laserProcessReadings to fill
+   them from the raw buffer into the current and cumulative buffer
+   (and call the reading callbacks).  The internal* calls are all
+   internal to the base class and shouldn't have to be used by
+   inheriting classes.  After you have created a new laser type you
+   can add it to Aria by using the Aria::laserAddCreator call and then
+   it will work like any of the built in laser types (see the
+   documentation for that function for what the creator needs to do,
+   and an example is ArLaserCreatorHelper in the ariaUtil.h/cpp
+   files).  Similiarly if you need a new connection type (ie not
+   serial or tcp) you implement them and then use
+   Aria::deviceConnectionAddCreator call to add new types so they too
+   will then be treated the same as the built in Aria ones
+   (ArDeviceConnectionCreatorHelper in ariaUtil.h/cpp file is the
+   example for that one).
+
+   @since 2.7.0
+   @ingroup ImportantClasses
+   @ingroup DeviceClasses
+**/
+
+class ArLaser : public ArRangeDeviceThreaded
+{
+public:
+  /// Constructor
+  AREXPORT ArLaser(int laserNumber, 
+		   const char *name, 
+		   unsigned int absoluteMaxRange,
+		   bool locationDependent = false,
+		   bool appendLaserNumberToName = true);
+  /// Destructor
+  AREXPORT virtual ~ArLaser();
+
+  /// Connect to the laser and block for the result
+  AREXPORT virtual bool blockingConnect(void) = 0;
+  /// Connect to the laser without blocking
+  AREXPORT virtual bool asyncConnect(void) = 0;
+  /// Disconnect from the laser
+  AREXPORT virtual bool disconnect(void) = 0;
+  /// See if the laser is connected
+  AREXPORT virtual bool isConnected(void) = 0;  
+  /// See if the laser is trying to connect
+  AREXPORT virtual bool isTryingToConnect(void) = 0;  
+  
+  /// Sets the numter of seconds without a response until connection assumed lost
+  AREXPORT virtual void setConnectionTimeoutSeconds(double seconds);
+  /// Gets the number of seconds without a response until connection assumed lost
+  AREXPORT virtual double getConnectionTimeoutSeconds(void);
+
+  /// Gets the time data was last receieved
+  ArTime getLastReadingTime(void) { return myLastReading; }
+  
+  /// Gets the number of laser readings received in the last second
+  AREXPORT int getReadingCount(void);
+
+  /// Sets the device connection
+  AREXPORT virtual void setDeviceConnection(ArDeviceConnection *conn);
+  /// Gets the device connection
+  AREXPORT virtual ArDeviceConnection *getDeviceConnection(void);
+
+  /// Sets the position of the sensor on the robot
+  AREXPORT void setSensorPosition(double x, double y, double th, double z = 0);
+  /// Sets the position of the sensor on the robot
+  AREXPORT void setSensorPosition(ArPose pose, double z = 0);  
+  /// Gets if the sensor pose has been set 
+  bool hasSensorPosition(void) { return myHaveSensorPose; }
+  /// Gets the position of the sensor on the robot
+  ArPose getSensorPosition(void) { return mySensorPose; }
+  /// Gets the X position of the sensor on the robot
+  double getSensorPositionX(void) { return mySensorPose.getX(); }
+  /// Gets the Y position of the sensor on the robot
+  double getSensorPositionY(void) { return mySensorPose.getY(); }
+  /// Gets the Z position of the sensor on the robot (0 is unknown)
+  double getSensorPositionZ(void) { return mySensorZ; }
+  /// Gets the heading of the sensor on the robot
+  double getSensorPositionTh(void) { return mySensorPose.getTh(); }
+
+  /// Gets the number of the laser this is
+  int getLaserNumber(void) { return myLaserNumber; }
+  
+  /// Sets the log level that informational things are logged at
+  void setInfoLogLevel(ArLog::LogLevel infoLogLevel) 
+    { myInfoLogLevel = infoLogLevel; }
+  /// Gets the log level that informational things are logged at
+  ArLog::LogLevel getInfoLogLevel(void) 
+    { return myInfoLogLevel; }
+
+  /// Cumulative readings that are this close to current beams are discarded
+  void setCumulativeCleanDist(double dist)
+    {
+      myCumulativeCleanDist = dist;
+      myCumulativeCleanDistSquared = dist * dist;
+    }
+  /// Cumulative readings that are this close to current beams are discarded
+  double getCumulativeCleanDist(void)
+    { 
+      return myCumulativeCleanDist; 
+    }
+  /// Cumulative readings are cleaned every this number of milliseconds
+  void setCumulativeCleanInterval(int milliSeconds)
+    {
+      myCumulativeCleanInterval = milliSeconds;
+    }
+  /// Cumulative readings are cleaned every this number of milliseconds
+  int getCumulativeCleanInterval(void)
+    {
+      return myCumulativeCleanInterval;
+    }
+  /// Offset for cumulative cleaning 
+  void setCumulativeCleanOffset(int milliSeconds)
+    {
+      myCumulativeCleanOffset = milliSeconds;
+    }
+  /// Gets the offset for cumulative cleaning
+  int getCumulativeCleanOffset(void)
+    {
+      return myCumulativeCleanOffset;
+    }
+  /// Resets when the cumulative cleaning happened (so offset can help)
+  void resetLastCumulativeCleanTime(void)
+    {
+      myCumulativeLastClean.setToNow();
+      myCumulativeLastClean.addMSec(myCumulativeCleanOffset);
+    }
+
+  /// Adds a series of degree at which to ignore readings (within 1 degree of nearest integer)
+  AREXPORT bool addIgnoreReadings(const char *ignoreReadings); 
+  /// Adds a degree at which to ignore readings (within 1 degree of nearest integer)
+  void addIgnoreReading(double ignoreReading)
+    { myIgnoreReadings.insert(ArMath::roundInt(ignoreReading)); }
+  /// Clears the degrees we ignore readings at
+  void clearIgnoreReadings(void) 
+    { myIgnoreReadings.clear(); }
+  /// Gets the list of readings that we ignore
+  const std::set<int> *getIgnoreReadings(void) const
+    { return &myIgnoreReadings; }
+  
+  /// Gets if the laser is flipped or not
+  bool getFlipped(void) { return myFlipped; }
+  /// Sets if the laser is flipped or not
+  bool setFlipped(bool flipped) { myFlipped = flipped; return true; }
+
+  /// Gets the default TCP port for the laser
+  int getDefaultTcpPort(void) { return myDefaultTcpPort; }
+
+  /// Gets the default port type for the laser
+  const char *getDefaultPortType(void) { return myDefaultPortType.c_str(); }
+
+  /// Sees if this class can set the degrees with doubles or not
+  /**
+     Gets if this class can set the start and end degrees with doubles.
+     
+     If so, you can use getStartDegreesMin and getStartDegreesMax to see
+     the valid values that you can use with setStartDegrees (and see
+     what was set with getStartDegrees), and getEndDegreesMin and
+     getEndDegreesMax to see the valid values that you can use with
+     setEndDegrees (and see what was set with getEndDegrees).
+
+  **/
+  bool canSetDegrees(void) { return myCanSetDegrees; }
+
+  /// Gets the minimum value for the start angle
+  /** @see canSetDegrees **/
+  double getStartDegreesMin(void) { return myStartDegreesMin; }
+  /// Gets the maximum value for the start angle
+  /** @see canSetDegrees **/
+  double getStartDegreesMax(void) { return myStartDegreesMax; }
+  /// Gets the start angle
+  /** @see canSetDegrees **/
+  double getStartDegrees(void) { return myStartDegrees; }
+  /// Sets the start angle, it must be between getStartDegreesMin and getStartDegreesMax
+  /** @see canSetDegrees **/
+  AREXPORT bool setStartDegrees(double startDegrees);
+  /// Gets the minimum value for the end angle
+  /** @see canSetDegrees **/
+  double getEndDegreesMin(void) { return myEndDegreesMin; }
+  /// Gets the maximum value for the end angle
+  /** @see canSetDegrees **/
+  double getEndDegreesMax(void) { return myEndDegreesMax; }
+  /// Gets the end angle
+  /** @see canSetDegrees **/
+  double getEndDegrees(void) { return myEndDegrees; }
+  /// Sets the end angle, it must be between getEndDegreesMin and getEndDegreesMax
+  /** @see canSetDegrees **/
+  AREXPORT bool setEndDegrees(double endDegrees);
+
+
+  /**
+     Gets if you can choose the number of degrees
+
+     If so, you can call chooseDegrees with one of the strings from
+     getDegreesChoices, and get the degrees chosen as a string with 
+     getDegreesChoice or get the degrees chosen as a double with
+     getDegreesChoiceDouble.
+  **/
+  bool canChooseDegrees(void) { return myCanChooseDegrees; }
+  /// Gets the list of range choices
+  /** @see canChooseDegrees **/
+  std::list<std::string> getDegreesChoices(void) 
+    { return myDegreesChoicesList; }
+  /// Gets a string with the list of degrees choices seperated by |s 
+  /** @see canChooseDegrees **/
+  const char *getDegreesChoicesString(void) 
+    { return myDegreesChoicesString.c_str(); }
+  /// Sets the range to one of the choices from getDegreesChoices
+  /** @see canChooseDegrees **/
+  AREXPORT bool chooseDegrees(const char *range);
+  /// Gets the range that was chosen
+  /** @see canChooseDegrees **/
+  const char *getDegreesChoice(void) 
+    { return myDegreesChoice.c_str(); }
+  /// Gets the range that was chosen as a double
+  /** @see canChooseDegrees **/
+  double getDegreesChoiceDouble(void) { return myDegreesChoiceDouble; }
+  /// Gets the map of degrees choices to what they mean 
+  /** 
+      This is mostly for the simulated laser
+      @see canChooseDegrees 
+      @internal 
+  **/
+  std::map<std::string, double> getDegreesChoicesMap(void) 
+    { return myDegreesChoices; }
+
+
+  /**
+     Gets if you can set an increment
+     
+  **/
+  bool canSetIncrement(void) { return myCanSetIncrement; }
+  /// Gets the increment minimum
+  /** @see canSetIncrement **/
+  double getIncrementMin(void) { return myIncrementMin; }
+  /// Gets the increment maximum
+  /** @see canSetIncrement **/
+  double getIncrementMax(void) { return myIncrementMax; }
+  /// Gets the increment
+  /** @see canSetIncrement **/
+  double getIncrement(void) { return myIncrement; }
+  /// Sets the increment
+  /** @see canSetIncrement **/
+  AREXPORT bool setIncrement(double increment);
+
+  /**
+     Gets if you can choose an increment.
+
+     If so, call chooseIncrement with one of the choices in
+     getIncrementChoices, and get the choice as a string with
+     getIncrementChoice or the choice as a string with
+     getIncrementChoiceDouble.
+  **/
+  bool canChooseIncrement(void) { return myCanChooseIncrement; }
+  /// Gets the list of increment choices 
+  /** @see canChooseIncrement **/
+  std::list<std::string> getIncrementChoices(void) 
+    { return myIncrementChoicesList; }
+  /// Gets a string with the list of increment choices seperated by |s 
+  /** @see canChooseIncrement **/
+  const char *getIncrementChoicesString(void) 
+    { return myIncrementChoicesString.c_str(); }
+  /// Sets the increment to one of the choices from getIncrementChoices
+  /** @see canChooseIncrement **/
+  AREXPORT bool chooseIncrement(const char *increment);
+  /// Gets the increment that was chosen
+  /** @see canChooseIncrement **/
+  const char *getIncrementChoice(void) { return myIncrementChoice.c_str(); }
+  /// Gets the increment that was chosen as a double
+  /** @see canChooseIncrement **/
+  double getIncrementChoiceDouble(void) { return myIncrementChoiceDouble; }
+  /// Gets the map of increment choices to what they mean
+  /** 
+      This is mostly for the simulated laser
+      @see canChooseIncrement 
+      @internal 
+  **/
+  std::map<std::string, double> getIncrementChoicesMap(void) 
+    { return myIncrementChoices; }
+
+  /**
+     Gets if you can choose units for the laser.
+
+     If so, call chooseUnits with one of the choices in
+     getUnitsChoices, and see what the choice was with
+     getUnitsChoice.
+  **/
+  bool canChooseUnits(void) { return myCanChooseUnits; }
+  /// Gets the list of units choices 
+  /** @see canChooseUnits **/
+  std::list<std::string> getUnitsChoices(void) 
+    { return myUnitsChoices; }
+  /// Gets a string with the list of units choices seperated by |s 
+  /** @see canChooseUnits **/
+  const char *getUnitsChoicesString(void) 
+    { return myUnitsChoicesString.c_str(); }
+  /// Sets the units to one of the choices from getUnitsChoices
+  /** @see canChooseUnits **/
+  AREXPORT bool chooseUnits(const char *units);
+  /// Gets the units that was chosen
+  /** @see canChooseUnits **/
+  const char *getUnitsChoice(void) { return myUnitsChoice.c_str(); }
+
+  /**
+     Gets if you can choose reflectorBits for the laser.
+
+     If so, call chooseReflectorBits with one of the choices in
+     getReflectorBitsChoices, and see what the choice was with
+     getReflectorBitsChoice.
+  **/
+  bool canChooseReflectorBits(void) { return myCanChooseReflectorBits; }
+  /// Gets the list of reflectorBits choices 
+  /** @see canChooseReflectorBits **/
+  std::list<std::string> getReflectorBitsChoices(void) 
+    { return myReflectorBitsChoices; }
+  /// Gets a string with the list of reflectorBits choices seperated by |s 
+  /** @see canChooseReflectorBits **/
+  const char *getReflectorBitsChoicesString(void) 
+    { return myReflectorBitsChoicesString.c_str(); }
+  /// Sets the reflectorBits to one of the choices from getReflectorBitsChoices
+  /** @see canChooseReflectorBits **/
+  AREXPORT bool chooseReflectorBits(const char *reflectorBits);
+  /// Gets the reflectorBits that was chosen
+  /** @see canChooseReflectorBits **/
+  const char *getReflectorBitsChoice(void) { return myReflectorBitsChoice.c_str(); }
+
+  /**
+     Gets if you can set powerControlled for the laser.
+
+     If so, call setPowerControlled to set if the power is being controlled
+     or not, and see what the setting is with getPowerControlled.
+  **/
+  bool canSetPowerControlled(void) { return myCanSetPowerControlled; }
+  /// Sets if the power is controlled 
+  /** @see canChoosePowerControlled **/
+  AREXPORT bool setPowerControlled(bool powerControlled);
+  /// Gets if the power is controlled
+  /** @see canChoosePowerControlled **/
+  bool getPowerControlled(void) { return myPowerControlled; }
+
+  /**
+     Gets if you can choose startingBaud for the laser.
+
+     If so, call chooseStartingBaud with one of the choices in
+     getStartingBaudChoices, and see what the choice was with
+     getStartingBaudChoice.
+  **/
+  bool canChooseStartingBaud(void) { return myCanChooseStartingBaud; }
+  /// Gets the list of reflectorBits choices 
+  /** @see canChooseStartingBaud **/
+  std::list<std::string> getStartingBaudChoices(void) 
+    { return myStartingBaudChoices; }
+  /// Gets a string with the list of reflectorBits choices seperated by |s 
+  /** @see canChooseStartingBaud **/
+  const char *getStartingBaudChoicesString(void) 
+    { return myStartingBaudChoicesString.c_str(); }
+  /// Sets the reflectorBits to one of the choices from getStartingBaudChoices
+  /** @see canChooseStartingBaud **/
+  AREXPORT bool chooseStartingBaud(const char *reflectorBits);
+  /// Gets the reflectorBits that was chosen
+  /** @see canChooseStartingBaud **/
+  const char *getStartingBaudChoice(void) { return myStartingBaudChoice.c_str(); }
+
+
+  /**
+     Gets if you can choose autoBaud for the laser.
+
+     If so, call chooseAutoBaud with one of the choices in
+     getAutoBaudChoices, and see what the choice was with
+     getAutoBaudChoice.
+  **/
+  bool canChooseAutoBaud(void) { return myCanChooseAutoBaud; }
+  /// Gets the list of reflectorBits choices 
+  /** @see canChooseAutoBaud **/
+  std::list<std::string> getAutoBaudChoices(void) 
+    { return myAutoBaudChoices; }
+  /// Gets a string with the list of reflectorBits choices seperated by |s 
+  /** @see canChooseAutoBaud **/
+  const char *getAutoBaudChoicesString(void) 
+    { return myAutoBaudChoicesString.c_str(); }
+  /// Sets the reflectorBits to one of the choices from getAutoBaudChoices
+  /** @see canChooseAutoBaud **/
+  AREXPORT bool chooseAutoBaud(const char *reflectorBits);
+  /// Gets the reflectorBits that was chosen
+  /** @see canChooseAutoBaud **/
+  const char *getAutoBaudChoice(void) { return myAutoBaudChoice.c_str(); }
+
+
+  /// Adds a connect callback
+  void addConnectCB(ArFunctor *functor,
+			     int position = 50) 
+    { myConnectCBList.addCallback(functor, position); }
+  /// Adds a disconnect callback
+  void remConnectCB(ArFunctor *functor)
+    { myConnectCBList.remCallback(functor); }
+
+  /// Adds a callback for when a connection to the robot is failed
+  void addFailedConnectCB(ArFunctor *functor, 
+				   int position = 50) 
+    { myFailedConnectCBList.addCallback(functor, position); }
+  /// Removes a callback for when a connection to the robot is failed
+  void remFailedConnectCB(ArFunctor *functor)
+    { myFailedConnectCBList.remCallback(functor); }
+
+  /// Adds a callback for when disconnect is called while connected
+  void addDisconnectNormallyCB(ArFunctor *functor, 
+			     int position = 50) 
+    { myDisconnectNormallyCBList.addCallback(functor, position); }
+
+  /// Removes a callback for when disconnect is called while connected
+  void remDisconnectNormallyCB(ArFunctor *functor)
+    { myDisconnectNormallyCBList.remCallback(functor); }
+  
+  /// Adds a callback for when disconnection happens because of an error
+  void addDisconnectOnErrorCB(ArFunctor *functor, 
+			     int position = 50) 
+    { myDisconnectOnErrorCBList.addCallback(functor, position); }
+
+  /// Removes a callback for when disconnection happens because of an error
+  void remDisconnectOnErrorCB(ArFunctor *functor)
+    { myDisconnectOnErrorCBList.remCallback(functor); }
+
+  /// Adds a callback that is called whenever a laser reading is processed
+  void addReadingCB(ArFunctor *functor,
+			     int position = 50) 
+    { myDataCBList.addCallback(functor, position); }
+
+  /// Removes a callback that is called whenever a laser reading is processed
+  void remReadingCB(ArFunctor *functor)
+    { myDataCBList.remCallback(functor); }
+
+  /// Gets the absolute maximum range on the sensor
+  unsigned int getAbsoluteMaxRange(void) { return myAbsoluteMaxRange; }
+
+  /// Copies the reading count stuff from another laser (for the laser filter)
+  AREXPORT void copyReadingCount(const ArLaser* laser);
+
+  /// override the default to bound the maxrange by the absolute max range
+  AREXPORT virtual void setMaxRange(unsigned int maxRange);
+
+  /// override the default to keep track of its been set or not
+  AREXPORT virtual void setCumulativeBufferSize(size_t size);
+
+  /// Call the laser can implement to make sure the parameters
+  /// are all okay or set the maximum range (based on the params)
+  /**
+     The base laser should make sure all the parameters make sense
+     according to what was set up as allowed. 
+
+     This is here for two purposes.  The first is to check for
+     parameters that aren't valid because of something the base class
+     can't check for. The second is to recalculate whatever the
+     maximum range of the sensor is based on those settings, and call
+     setAbsoluteMaxRange if the maximum range has changed based on the
+     settings.
+
+     This is strictly an internal call, mostly for the simulated laser
+     so that it can more closely match the real laser on complicated
+     things like the LMS2xx where the settings for the units and bits
+     affect what the maximum range is.
+
+     @internal
+  **/
+  AREXPORT virtual bool laserCheckParams(void) { return true; }
+
+  /// Applies a transform to the buffers
+  AREXPORT virtual void applyTransform(ArTransform trans,
+                                        bool doCumulative = true);
+
+  /// Makes it so we'll apply simple naming to all the lasers
+  AREXPORT static void useSimpleNamingForAllLasers(void);
+protected:
+  
+  /// Converts the raw readings into the buffers (needs to be called
+  /// by subclasses)
+  AREXPORT void laserProcessReadings(void);
+
+  /// Returns if the laser has lost connection so that the subclass
+  /// can do something appropriate
+  AREXPORT bool laserCheckLostConnection(void);
+
+  /// Pulls the unset params from the robot parameter file
+  AREXPORT bool laserPullUnsetParamsFromRobot(void);
+
+  /// Allows setting the degrees the laser uses to anything in a range
+  AREXPORT void laserAllowSetDegrees(double defaultStartDegrees, double startDegreesMin, double startDegreesMax, double defaultEndDegrees, double endDegreesMin, double endDegreesMax);
+
+  /// Allows setting the degrees the laser uses to one of a number of choices
+  AREXPORT void laserAllowDegreesChoices(const char *defaultDegreesChoice,
+			   std::map<std::string, double> degreesChoices);
+
+  /// Allows setting the increment the laser uses to anything in a range
+  AREXPORT void laserAllowSetIncrement(
+	  double defaultIncrement, double incrementMin,  double incrementMax);
+
+  /// Allows setting the increment to one of a number of choices
+  AREXPORT void laserAllowIncrementChoices(const char *defaultIncrementChoice, 
+			     std::map<std::string, double> incrementChoices);
+
+  /// Allows setting the units the laser will use to one of a number of choices
+  AREXPORT void laserAllowUnitsChoices(const char *defaultUnitsChoice, 
+			 std::list<std::string> unitsChoices);
+
+  /// Allows setting the reflector bits the laser will use to one of a
+  /// number of choices
+  AREXPORT void laserAllowReflectorBitsChoices(
+	  const char *defaultReflectorBitsChoice,
+	  std::list<std::string> reflectorBitsChoices);
+
+  /// Allows setting if the power is controlled or not
+  AREXPORT void laserAllowSetPowerControlled(bool defaultPowerControlled);
+
+  /// Allows setting the starting baud to one of a number of choices
+  AREXPORT void laserAllowStartingBaudChoices(
+	  const char *defaultStartingBaudChoice, 
+	  std::list<std::string> startingBaudChoices);
+
+  /// Allows setting the auto baud speed to one of a number of choices
+  AREXPORT void laserAllowAutoBaudChoices(
+	  const char *defaultAutoBaudChoice, 
+	  std::list<std::string> autoBaudChoices);
+
+  /// Called when the lasers name is set
+  AREXPORT virtual void laserSetName(const char *name);
+  
+  /// Sets the laser's default TCP port
+  AREXPORT void laserSetDefaultTcpPort(int defaultLaserTcpPort);
+
+  /// Sets the laser's default connection port type
+  AREXPORT void laserSetDefaultPortType(const char *defaultPortType);
+
+  /// Sets the absolute maximum range on the sensor
+  AREXPORT void laserSetAbsoluteMaxRange(unsigned int absoluteMaxRange);
+
+  /// Function for a laser to call when it connects
+  AREXPORT virtual void laserConnect(void);
+  /// Function for a laser to call when it fails to connects
+  AREXPORT virtual void laserFailedConnect(void);
+  /// Function for a laser to call when it disconnects normally
+  AREXPORT virtual void laserDisconnectNormally(void);
+  /// Function for a laser to call when it loses connection
+  AREXPORT virtual void laserDisconnectOnError(void);
+
+  // processes the individual reading, helper for base class
+  AREXPORT void internalProcessReading(double x, double y, unsigned int range,
+				    bool clean, bool onlyClean);
+
+  // internal helper function for seeing if the choice matches
+  AREXPORT bool internalCheckChoice(const char *check, const char *choice,
+		   std::list<std::string> *choices, const char *choicesStr);
+  // internal helper function for seeing if the choice matches
+  AREXPORT bool internalCheckChoice(const char *check, const char *choice,
+		   std::map<std::string, double> *choices,
+		   const char *choicesStr, double *choiceDouble);
+  // internal helper function for building a string for a list of chocies
+  void internalBuildChoicesString(std::list<std::string> *choices, std::string *str);
+  // internal helper function for building a string for a list of chocies
+  void internalBuildChoices(std::map<std::string, double> *choices, 
+		    std::string *str, std::list<std::string> *choicesList);
+
+  // Function called in laserProcessReadings to indicate that a
+  // reading was received
+  AREXPORT virtual void internalGotReading(void);
+
+  int myLaserNumber;
+
+
+  ArDeviceConnection *myConn;
+  ArMutex myConnMutex;
+
+  double myTimeoutSeconds;
+  
+
+  ArPose mySensorPose;
+  double mySensorZ;
+  bool myHaveSensorPose;
+
+  double myCumulativeCleanDist;
+  double myCumulativeCleanDistSquared;
+  int myCumulativeCleanInterval;
+  int myCumulativeCleanOffset;
+  ArTime myCumulativeLastClean;
+  std::set<int> myIgnoreReadings;
+
+  unsigned int myAbsoluteMaxRange;
+  bool myMaxRangeSet;
+
+  bool myCumulativeBufferSizeSet;
+
+  bool myFlippedSet;
+  bool myFlipped;
+  
+  bool myCanSetDegrees; 
+  double myStartDegreesMin;
+  double myStartDegreesMax;
+  bool myStartDegreesSet;
+  double myStartDegrees;
+  double myEndDegreesMin;
+  double myEndDegreesMax;
+  bool myEndDegreesSet;
+  double myEndDegrees;
+
+  bool myCanChooseDegrees;
+  std::map<std::string, double> myDegreesChoices; 
+  std::list<std::string> myDegreesChoicesList; 
+  bool myDegreesChoiceSet;
+  std::string myDegreesChoicesString; 
+  std::string myDegreesChoice;
+  double myDegreesChoiceDouble;
+
+
+  bool myCanSetIncrement; 
+  double myIncrementMin; 
+  double myIncrementMax; 
+  bool myIncrementSet;
+  double myIncrement;
+
+  bool myCanChooseIncrement; 
+  std::map<std::string, double> myIncrementChoices; 
+  std::list<std::string> myIncrementChoicesList; 
+  std::string myIncrementChoicesString; 
+  bool myIncrementChoiceSet;
+  std::string myIncrementChoice;
+  double myIncrementChoiceDouble;
+
+  bool myCanChooseUnits; 
+  std::list<std::string> myUnitsChoices; 
+  std::string myUnitsChoicesString; 
+  bool myUnitsChoiceSet;
+  std::string myUnitsChoice;
+
+  bool myCanChooseReflectorBits; 
+  std::list<std::string> myReflectorBitsChoices; 
+  std::string myReflectorBitsChoicesString; 
+  bool myReflectorBitsChoiceSet;
+  std::string myReflectorBitsChoice;
+  
+  bool myCanSetPowerControlled;
+  bool myPowerControlledSet;
+  bool myPowerControlled;
+
+  bool myCanChooseStartingBaud; 
+  std::list<std::string> myStartingBaudChoices; 
+  std::string myStartingBaudChoicesString; 
+  bool myStartingBaudChoiceSet;
+  std::string myStartingBaudChoice;
+
+  bool myCanChooseAutoBaud; 
+  std::list<std::string> myAutoBaudChoices; 
+  std::string myAutoBaudChoicesString; 
+  bool myAutoBaudChoiceSet;
+  std::string myAutoBaudChoice;
+
+  int myDefaultTcpPort;
+  std::string myDefaultPortType;
+
+  ArCallbackList myConnectCBList;
+  ArCallbackList myFailedConnectCBList;
+  ArCallbackList myDisconnectOnErrorCBList;
+  ArCallbackList myDisconnectNormallyCBList;
+  ArCallbackList myDataCBList;
+
+  ArLog::LogLevel myInfoLogLevel;
+
+  ArTime myLastReading;
+  // packet count
+  time_t myTimeLastReading;
+  int myReadingCurrentCount;
+  int myReadingCount;
+  bool myRobotRunningAndConnected;
+
+  static bool ourUseSimpleNaming;
+};
+
+#endif // ARRANGEDEVICELASER_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  #ifndef NLNETPACKETRECEIVERTCP_H
+#define NLNETPACKETRECEIVERTCP_H
+
+#include "Aria.h"
+#include "ArNetPacket.h"
+
+/**
+   This class receives TCP packets from a socket, you need to have an
+   open socket and give it to the socket with setSocket, then you need
+   to set up a callback to process packets with setProcessPacketCB,
+   finally call readData which will read in all the data and call the
+   processPacketCB.
+**/
+class ArNetPacketReceiverTcp
+{
+public:
+  /// Constructor
+  AREXPORT ArNetPacketReceiverTcp();
+  /// Destructor
+  AREXPORT ~ArNetPacketReceiverTcp();
+  
+  /// Sets the socket this receiver uses
+  AREXPORT void setSocket(ArSocket *socket);
+  /// Gets the socket this receiver uses
+  AREXPORT ArSocket *getSocket(void);
+
+  /// Sets the callback for use when a packet is received
+  AREXPORT void setProcessPacketCB(ArFunctor1<ArNetPacket *> *functor);
+
+  /// Gets the callback used when a packet is received
+  AREXPORT ArFunctor1<ArNetPacket *> *getProcessPacketCB(void);
+
+  /// Sets the logging prefix
+  AREXPORT void setLoggingPrefix(const char *loggingPrefix);
+
+  /// Reads in all the data available calling the processPacketCB
+  AREXPORT bool readData(void);
+  
+  /// Sets whether we're quiet about errors or not
+  void setQuiet(bool quiet) { myQuiet = quiet; }
+  /// Gets whether we're quiet about errors or not
+  bool getQuiet(void) { return myQuiet; }
+protected:
+  enum Ret { 
+    RET_CONN_CLOSED, // the connection was closed (in a good manner)
+    RET_CONN_ERROR, // the connection was has an error (so close it)
+    RET_GOT_PACKET, // we got a good packet
+    RET_BAD_PACKET, // we got a bad packet (checksum wrong)
+    RET_FAILED_READ, // our read failed (no data)
+    RET_TIMED_OUT}; // we were reading and timed out
+  /// Reads in a single packet, returns NULL if not one
+  AREXPORT Ret readPacket(int msWait);
+
+
+  enum State { STATE_SYNC1, STATE_SYNC2, STATE_LENGTH1,
+	       STATE_LENGTH2, STATE_ACQUIRE_DATA };
+
+  enum {
+    TOTAL_PACKET_LENGTH = ArNetPacket::MAX_LENGTH+ArNetPacket::HEADER_LENGTH+ArNetPacket::FOOTER_LENGTH
+  };
+
+  State myState;
+  ArFunctor1<ArNetPacket *> *myProcessPacketCB;
+  bool myQuiet;
+  ArSocket *mySocket;
+  ArTime myLastPacket;
+  ArNetPacket myPacket;
+
+
+  char myReadBuff[TOTAL_PACKET_LENGTH];
+  int myReadCount;
+  int myReadLength;
+  int myReadCommand;
+  unsigned char mySync1;
+  unsigned char mySync2;
+  std::string myLoggingPrefix;
+};
+
+#endif // NLNETPACKETRECEIVERTCP
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 #ifndef ARCLIENTSIMPLECONNECTOR_H
+#define ARCLIENTSIMPLECONNECTOR_H
+
+#include "Aria.h"
+#include "ArClientBase.h"
+
+/**
+   This will let you connect to different hosts, ports, and with
+   different users and passwords more easily.
+
+   Some program command line options affect behavior:
+   @verbinclude ArClientSimpleConnector_options
+   
+   To set the host the client will connect to use '<code>-host</code> <i>hostName</i>'
+   in the command line parameters
+   (no abbreviation for this since <code>-h</code> is for help and it's only 4
+   letters).  To set the port the client will connect to use '<code>-port</code>
+   <i>portNumber</i>' or '<code>-p</code> <i>portNumber</i>'.  
+   To set the user to connect with
+   use '<code>-user</code> <i>userName</i>' or '<code>-u</code> <i>userName</i>'.  
+   To set the password to
+   connect with use '<code>-password</code> <i>password</i>' or 
+   '<code>-pwd</code> <i>password</i>'.  To
+   use no password use '<code>-nopassword</code>' or '<code>-np</code>'. 
+   Note that for using
+   passwords you should NOT use that option on the command line since
+   that can show everyone what the password is (especially in Linux),
+   it's there only for testing.  If you give it a username without a
+   password it'll ask you for a password, if you don't have a password
+   just use the -nopassword or let it ask you for a password and hit
+   enter.  To set the server key (string we need to connect to the
+   server) use '<code>-setServerKey</code> <i>serverKey</i>' or 
+   '<code>-ssk</code> <i>serverKey</i>'.
+ **/
+class ArClientSimpleConnector
+{
+public:
+  /// Constructor that takes argument parser (prefered)
+  AREXPORT ArClientSimpleConnector(ArArgumentParser *parser);
+  /// Constructor that takes args from main (not prefered)
+  AREXPORT ArClientSimpleConnector(int *argc, char **argv);
+  /// Constructor that takes argument builder (not prefered)
+  AREXPORT ArClientSimpleConnector(ArArgumentBuilder *arguments);
+  /// Destructor
+  AREXPORT ~ArClientSimpleConnector(void);
+  /// Connects the client with the options given
+  AREXPORT bool connectClient(ArClientBase *client, bool log = true);
+  /// Parses the arguments 
+  AREXPORT bool parseArgs(void);
+  /// Parses the arguments 
+  AREXPORT bool parseArgs(ArArgumentParser *parser);
+  /// Logs the options the connector has
+  AREXPORT void logOptions(void) const;
+protected:
+  void reset(void);
+  const char *myHost;
+  const char *myUser;
+  const char *myPassword;
+  const char *myServerKey;
+  int myPort;
+  bool myNoPassword;
+  bool myLogDataList;
+  // our parser
+  ArArgumentParser *myParser;
+  bool myOwnParser;
+  
+  ArRetFunctorC<bool, ArClientSimpleConnector> myParseArgsCB;
+  ArConstFunctorC<ArClientSimpleConnector> myLogOptionsCB;
+};
+
+#endif // ARCLIENTSIMPLECONNECTOR_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    #ifndef NLSERVERCOMMANDS_H
+#define NLSERVERCOMMANDS_H
+
+/**
+   The commands from the server to the client
+**/
+
+class ArServerCommands
+{
+public:
+  enum ServerCommands {
+    SHUTDOWN = 1, ///< Closes the connection
+    INTRODUCTION = 2, ///< Introduces the server to the client
+    UDP_INTRODUCTION = 3, ///< Udp introduction of the server to the client
+    UDP_CONFIRMATION = 4, ///< Confirmation Udp was received from client
+    CONNECTED = 5, ///< Server accepts clients connection
+    REJECTED = 6, ///< Server rejects clients connection, has a byte2, then a string.... these reasons (1 = bad username password, string then is empty, 2 = rejecting connection because using central server, string then is central server IP, 3 = client rejecting server because server has wrong protocol, 4 = server rejected client because client has wrong protocol, 5 = maxClients exceeded, 6 = type of client is specified, but doesn't match)
+    TCP_ONLY = 7, ///< Server tells client to only send TCP
+    LIST = 129, ///< Map of the string names for a type to a number along with a long description of the data type
+    LISTSINGLE = 130, ///< Map of a single type to a number (for late additions to server) along with its description
+    LISTARGRET = 131, ///< Map of the number to their arguments and returns descriptions
+    LISTARGRETSINGLE = 132, ///< Map of a single type to a number (for late additions to server) along with its argument and return descriptions
+    LISTGROUPANDFLAGS = 133, ///< Map of the number to their command groups and data flags
+    LISTGROUPANDFLAGSSINGLE = 134 ///< Map of a single type to a number (for late additions to server) along with its command group and data flags
+  };
+
+  enum Type
+  {
+    TYPE_UNSPECIFIED = 0, /// Unspecified (anything can connect)
+    TYPE_REAL = 1, ///< Only real robots permitted to connect
+    TYPE_SIMULATED = 2, ///< Only simulated robots permitted to connect
+    TYPE_NONE = 3 ///< Nothing is permitted to connect
+  };
+  static const char *toString(Type type) 
+    { 
+      if (type == TYPE_UNSPECIFIED)
+	return "unspecified";
+      else if (type == TYPE_REAL)
+	return "real";
+      else if (type == TYPE_SIMULATED)
+	return "simulated";
+      else if (type == TYPE_NONE)
+	return "none";
+      else
+	return "unknown";
+    }
+};
+
+#endif // NLSERVERCOMMANDS_H
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           #ifndef ARCENTRALMANAGER
+#define ARCENTRALMANAGER
+
+#include "Aria.h"
+#include "ArServerBase.h"
+#include "ArCentralForwarder.h"
+
+class ArCentralManager : public ArASyncTask
+{
+public:
+  /// Normal constructor
+  AREXPORT ArCentralManager(ArServerBase *robotServer, ArServerBase *clientServer);
+  /// Empty constructor for those that'll inherit and do other behavior
+  AREXPORT ArCentralManager();
+  /// Destructor
+  AREXPORT virtual ~ArCentralManager();
+  /// Enforces that everything is using this protocol version
+  AREXPORT virtual void enforceProtocolVersion(const char *protocolVersion);
+  /// Enforces that the robots that connect are this type
+  AREXPORT virtual void enforceType(ArServerCommands::Type type);
+  /// Adds a callback for when a new forwarder is added
+  AREXPORT virtual void addForwarderAddedCallback(
+	  ArFunctor1<ArCentralForwarder *> *functor, int priority = 0);
+  /// Removes a callback for when a new forwarder is added
+  AREXPORT virtual void remForwarderAddedCallback(
+	  ArFunctor1<ArCentralForwarder *> *functor);
+  /// Adds a callback for when a new forwarder is destroyed
+  AREXPORT virtual void addForwarderRemovedCallback(
+	  ArFunctor1<ArCentralForwarder *> *functor, int priority = 0);
+  /// Removes a callback for when a new forwarder is destroyed
+  AREXPORT virtual void remForwarderRemovedCallback(
+	  ArFunctor1<ArCentralForwarder *> *functor);	  
+  /// Adds a cycle callback
+  virtual void addCycleCallback(ArFunctor *functor,
+			     int position = 50) 
+    { myCycleCBList.addCallback(functor, position); }
+  /// Removes a cycle callback
+  virtual void remCycleCallback(ArFunctor *functor)
+    { myCycleCBList.remCallback(functor); }
+
+
+  /// Logs all the connection information
+  AREXPORT void logConnections(void);
+  /// Networking command to get the list of clients
+  AREXPORT void netClientList(ArServerClient *client, ArNetPacket *packet);
+  /// A callback so we can tell the main connection happened when a
+  /// client is removed
+  AREXPORT void forwarderServerClientRemovedCallback(
+	  ArCentralForwarder *forwarder, ArServerClient *client);  
+  /// A callback so we can close down other connetions when a main
+  /// client loses connection
+  AREXPORT void mainServerClientRemovedCallback(ArServerClient *client);  
+  /// Networking command to switch the direction of a connection
+  AREXPORT void netServerSwitch(ArServerClient *client, ArNetPacket *packet);
+  AREXPORT virtual void *runThread(void *arg);
+
+
+protected:
+  void close(void);
+  bool processFile(void);
+
+  void forwarderAdded(ArCentralForwarder *forwarder);
+  void forwarderRemoved(ArCentralForwarder *forwarder);
+  
+  bool removePendingDuplicateConnections(const char *robotName);
+
+  ArServerBase *myRobotServer;
+  ArServerBase *myClientServer;
+  double myHeartbeatTimeout;
+  double myUdpHeartbeatTimeout

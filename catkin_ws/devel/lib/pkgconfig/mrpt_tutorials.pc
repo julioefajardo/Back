@@ -1,0 +1,8 @@
+prefix=/home/julio/catkin_ws/devel
+
+Name: mrpt_tutorials
+Description: Description of mrpt_tutorials
+Version: 0.1.23
+Cflags: 
+Libs: -L/home/julio/catkin_ws/devel/lib 
+Requires: 

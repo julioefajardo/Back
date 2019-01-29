@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node name="simple_exploration_controller" pkg="hector_exploration_controller"  type="simple_exploration_controller" output="screen"> </node>
+</launch>

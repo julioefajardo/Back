@@ -1,0 +1,15 @@
+5.4.0 1
+ _ZN15QFontEngineQPF2C1ERK8QFontDefRK10QByteArray@Base 5.4.0 1
+ _ZN15QFontEngineQPF2C2ERK8QFontDefRK10QByteArray@Base 5.4.0 1
+ _ZN15QFontEngineQPF2D0Ev@Base 5.4.0 1
+ _ZN15QFontEngineQPF2D1Ev@Base 5.4.0 1
+ _ZN15QFontEngineQPF2D2Ev@Base 5.4.0 1
+ _ZN15QGridLayoutItem10setRowSpanEiN2Qt11OrientationE@Base 5.3.0 1
+ _ZN15QGridLayoutItem11setFirstRowEiN2Qt11OrientationE@Base 5.3.0 1
+ _ZN15QGridLayoutItem16setStretchFactorEiN2Qt11OrientationE@Base 5.3.0 1
+ _ZN15QGridLayoutItem18insertOrRemoveRowsEiiN2Qt11OrientationE@Base 5.3.0 1
+ _ZN15QGridLayoutItem9transposeEv@Base 5.3.0 1
+ _ZN15QGridLayoutItemC1Eiiii6QFlagsIN2Qt13AlignmentFlagEE@Base 5.3.0 1
+ _ZN15QGridLayoutItemC2Eiiii6QFlagsIN2Qt13AlignmentFlagEE@Base 5.3.0 1
+ _ZN15QGuiApplication10allWindowsEv@Base 5.0.2
+ _ZN15QGuiApplication10setPaletteERK8QPalette@Base 5.0.2

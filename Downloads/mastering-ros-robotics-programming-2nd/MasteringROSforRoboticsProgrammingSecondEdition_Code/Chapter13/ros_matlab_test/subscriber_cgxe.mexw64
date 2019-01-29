@@ -1,0 +1,5110 @@
+lf->smartReadExact(\$buffer, 46 - 4)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     46 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+   #my $versionMadeBy      = unpack ("v", substr($buffer, 4-4,  2));
+   #my $extractVersion     = unpack ("v", substr($buffer, 6-4,  2));
+   #my $gpFlag             = unpack ("v", substr($buffer, 8-4,  2));
+   #my $compressedMethod   = unpack ("v", substr($buffer, 10-4, 2));
+   #my $lastModTime        = unpack ("V", substr($buffer, 12-4, 4));
+   #my $crc32              = unpack ("V", substr($buffer, 16-4, 4));
+    my $compressedLength   = unpack ("V", substr($buffer, 20-4, 4));
+    my $uncompressedLength = unpack ("V", substr($buffer, 24-4, 4));
+    my $filename_length    = unpack ("v", substr($buffer, 28-4, 2)); 
+    my $extra_length       = unpack ("v", substr($buffer, 30-4, 2));
+    my $comment_length     = unpack ("v", substr($buffer, 32-4, 2));
+   #my $disk_start         = unpack ("v", substr($buffer, 34-4, 2));
+   #my $int_file_attrib    = unpack ("v", substr($buffer, 36-4, 2));
+   #my $ext_file_attrib    = unpack ("V", substr($buffer, 38-4, 2));
+   #my $lcl_hdr_offset     = unpack ("V", substr($buffer, 42-4, 2));
+
+    
+    my $filename;
+    my $extraField;
+    my $comment ;
+    if ($filename_length)
+    {
+        $self->smartReadExact(\$filename, $filename_length)
+            or return $self->TruncatedTrailer("filename");
+        $keep .= $filename ;
+    }
+
+    if ($extra_length)
+    {
+        $self->smartReadExact(\$extraField, $extra_length)
+            or return $self->TruncatedTrailer("extra");
+        $keep .= $extraField ;
+    }
+
+    if ($comment_length)
+    {
+        $self->smartReadExact(\$comment, $comment_length)
+            or return $self->TruncatedTrailer("comment");
+        $keep .= $comment ;
+    }
+
+    return STATUS_OK ;
+}
+
+sub skipArchiveExtra
+{
+    my $self = shift;
+    my $magic = shift ;
+
+    my $buffer;
+    $self->smartReadExact(\$buffer, 4)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     4 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+
+    my $size = unpack ("V", $buffer);
+
+    $self->smartReadExact(\$buffer, $size)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     $size . " bytes") ;
+
+    $keep .= $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+    return STATUS_OK ;
+}
+
+
+sub skipCentralDirectory64Rec
+{
+    my $self = shift;
+    my $magic = shift ;
+
+    my $buffer;
+    $self->smartReadExact(\$buffer, 8)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     8 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+
+    my ($sizeLo, $sizeHi)  = unpack ("V V", $buffer);
+    my $size = $sizeHi * U64::MAX32 + $sizeLo;
+
+    $self->fastForward($size)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     $size . " bytes") ;
+
+   #$keep .= $buffer ;
+   #*$self->{HeaderPending} = $keep ;
+
+   #my $versionMadeBy      = unpack ("v",   substr($buffer,  0, 2));
+   #my $extractVersion     = unpack ("v",   substr($buffer,  2, 2));
+   #my $diskNumber         = unpack ("V",   substr($buffer,  4, 4));
+   #my $cntrlDirDiskNo     = unpack ("V",   substr($buffer,  8, 4));
+   #my $entriesInThisCD    = unpack ("V V", substr($buffer, 12, 8));
+   #my $entriesInCD        = unpack ("V V", substr($buffer, 20, 8));
+   #my $sizeOfCD           = unpack ("V V", substr($buffer, 28, 8));
+   #my $offsetToCD         = unpack ("V V", substr($buffer, 36, 8));
+
+    return STATUS_OK ;
+}
+
+sub skipCentralDirectory64Loc
+{
+    my $self = shift;
+    my $magic = shift ;
+
+    my $buffer;
+    $self->smartReadExact(\$buffer, 20 - 4)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     20 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+   #my $startCdDisk        = unpack ("V",   substr($buffer,  4-4, 4));
+   #my $offsetToCD         = unpack ("V V", substr($buffer,  8-4, 8));
+   #my $diskCount          = unpack ("V",   substr($buffer, 16-4, 4));
+
+    return STATUS_OK ;
+}
+
+sub skipEndCentralDirectory
+{
+    my $self = shift;
+    my $magic = shift ;
+
+    my $buffer;
+    $self->smartReadExact(\$buffer, 22 - 4)
+        or return $self->TrailerError("Minimum header size is " . 
+                                     22 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+   #my $diskNumber         = unpack ("v", substr($buffer, 4-4,  2));
+   #my $cntrlDirDiskNo     = unpack ("v", substr($buffer, 6-4,  2));
+   #my $entriesInThisCD    = unpack ("v", substr($buffer, 8-4,  2));
+   #my $entriesInCD        = unpack ("v", substr($buffer, 10-4, 2));
+   #my $sizeOfCD           = unpack ("V", substr($buffer, 12-4, 4));
+   #my $offsetToCD         = unpack ("V", substr($buffer, 16-4, 4));
+    my $comment_length     = unpack ("v", substr($buffer, 20-4, 2));
+
+    
+    my $comment ;
+    if ($comment_length)
+    {
+        $self->smartReadExact(\$comment, $comment_length)
+            or return $self->TruncatedTrailer("comment");
+        $keep .= $comment ;
+    }
+
+    return STATUS_OK ;
+}
+
+
+sub _isZipMagic
+{
+    my $buffer = shift ;
+    return 0 if length $buffer < 4 ;
+    my $sig = unpack("V", $buffer) ;
+    return $sig == ZIP_LOCAL_HDR_SIG ;
+}
+
+
+sub _readFullZipHeader($)
+{
+    my ($self) = @_ ;
+    my $magic = '' ;
+
+    $self->smartReadExact(\$magic, 4);
+
+    *$self->{HeaderPending} = $magic ;
+
+    return $self->HeaderError("Minimum header size is " . 
+                              30 . " bytes") 
+        if length $magic != 4 ;                                    
+
+
+    return $self->HeaderError("Bad Magic")
+        if ! _isZipMagic($magic) ;
+
+    my $status = $self->_readZipHeader($magic);
+    delete *$self->{Transparent} if ! defined $status ;
+    return $status ;
+}
+
+sub _readZipHeader($)
+{
+    my ($self, $magic) = @_ ;
+    my ($HeaderCRC) ;
+    my ($buffer) = '' ;
+
+    $self->smartReadExact(\$buffer, 30 - 4)
+        or return $self->HeaderError("Minimum header size is " . 
+                                     30 . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+    my $extractVersion     = unpack ("v", substr($buffer, 4-4,  2));
+    my $gpFlag             = unpack ("v", substr($buffer, 6-4,  2));
+    my $compressedMethod   = unpack ("v", substr($buffer, 8-4,  2));
+    my $lastModTime        = unpack ("V", substr($buffer, 10-4, 4));
+    my $crc32              = unpack ("V", substr($buffer, 14-4, 4));
+    my $compressedLength   = U64::newUnpack_V32 substr($buffer, 18-4, 4);
+    my $uncompressedLength = U64::newUnpack_V32 substr($buffer, 22-4, 4);
+    my $filename_length    = unpack ("v", substr($buffer, 26-4, 2)); 
+    my $extra_length       = unpack ("v", substr($buffer, 28-4, 2));
+
+    my $filename;
+    my $extraField;
+    my @EXTRA = ();
+    my $streamingMode = ($gpFlag & ZIP_GP_FLAG_STREAMING_MASK) ? 1 : 0 ;
+
+    return $self->HeaderError("Encrypted content not supported")
+        if $gpFlag & (ZIP_GP_FLAG_ENCRYPTED_MASK|ZIP_GP_FLAG_STRONG_ENCRYPTED_MASK);
+
+    return $self->HeaderError("Patch content not supported")
+        if $gpFlag & ZIP_GP_FLAG_PATCHED_MASK;
+
+    *$self->{ZipData}{Streaming} = $streamingMode;
+
+
+    if ($filename_length)
+    {
+        $self->smartReadExact(\$filename, $filename_length)
+            or return $self->TruncatedHeader("Filename");
+        $keep .= $filename ;
+    }
+
+    my $zip64 = 0 ;
+
+    if ($extra_length)
+    {
+        $self->smartReadExact(\$extraField, $extra_length)
+            or return $self->TruncatedHeader("Extra Field");
+
+        my $bad = IO::Compress::Zlib::Extra::parseRawExtra($extraField,
+                                                \@EXTRA, 1, 0);
+        return $self->HeaderError($bad)
+            if defined $bad;
+
+        $keep .= $extraField ;
+
+        my %Extra ;
+        for (@EXTRA)
+        {
+            $Extra{$_->[0]} = \$_->[1];
+        }
+        
+        if (defined $Extra{ZIP_EXTRA_ID_ZIP64()})
+        {
+            $zip64 = 1 ;
+
+            my $buff = ${ $Extra{ZIP_EXTRA_ID_ZIP64()} };
+
+            # This code assumes that all the fields in the Zip64
+            # extra field aren't necessarily present. The spec says that
+            # they only exist if the equivalent local headers are -1.
+
+            if (! $streamingMode) {
+                my $offset = 0 ;
+
+                if (U64::full32 $uncompressedLength->get32bit() ) {
+                    $uncompressedLength 
+                            = U64::newUnpack_V64 substr($buff, 0, 8);
+
+                    $offset += 8 ;
+                }
+
+                if (U64::full32 $compressedLength->get32bit() ) {
+
+                    $compressedLength 
+                        = U64::newUnpack_V64 substr($buff, $offset, 8);
+
+                    $offset += 8 ;
+                }
+           }
+        }
+    }
+
+    *$self->{ZipData}{Zip64} = $zip64;
+
+    if (! $streamingMode) {
+        *$self->{ZipData}{Streaming} = 0;
+        *$self->{ZipData}{Crc32} = $crc32;
+        *$self->{ZipData}{CompressedLen} = $compressedLength;
+        *$self->{ZipData}{UnCompressedLen} = $uncompressedLength;
+        *$self->{CompressedInputLengthRemaining} =
+            *$self->{CompressedInputLength} = $compressedLength->get64bit();
+    }
+
+    *$self->{ZipData}{CRC32} = Compress::Raw::Zlib::crc32(undef);
+    *$self->{ZipData}{Method} = $compressedMethod;
+    if ($compressedMethod == ZIP_CM_DEFLATE)
+    {
+        *$self->{Type} = 'zip-deflate';
+        my $obj = IO::Uncompress::Adapter::Inflate::mkUncompObject(1,0,0);
+
+        *$self->{Uncomp} = $obj;
+    }
+    elsif ($compressedMethod == ZIP_CM_BZIP2)
+    {
+        return $self->HeaderError("Unsupported Compression format $compressedMethod")
+            if ! defined $IO::Uncompress::Adapter::Bunzip2::VERSION ;
+        
+        *$self->{Type} = 'zip-bzip2';
+        
+        my $obj = IO::Uncompress::Adapter::Bunzip2::mkUncompObject();
+
+        *$self->{Uncomp} = $obj;
+    }
+    elsif ($compressedMethod == ZIP_CM_LZMA)
+    {
+        return $self->HeaderError("Unsupported Compression format $compressedMethod")
+            if ! defined $IO::Uncompress::Adapter::UnLzma::VERSION ;
+        
+        *$self->{Type} = 'zip-lzma';
+        my $LzmaHeader;
+        $self->smartReadExact(\$LzmaHeader, 4)
+                or return $self->saveErrorString(undef, "Truncated file");
+        my ($verHi, $verLo)   = unpack ("CC", substr($LzmaHeader, 0, 2));
+        my $LzmaPropertiesSize   = unpack ("v", substr($LzmaHeader, 2, 2));
+
+
+        my $LzmaPropertyData;
+        $self->smartReadExact(\$LzmaPropertyData, $LzmaPropertiesSize)
+                or return $self->saveErrorString(undef, "Truncated file");
+
+        if (! $streamingMode) {
+            *$self->{ZipData}{CompressedLen}->subtract(4 + $LzmaPropertiesSize) ;
+            *$self->{CompressedInputLengthRemaining} =
+                *$self->{CompressedInputLength} = *$self->{ZipData}{CompressedLen}->get64bit();
+        }
+
+        my $obj =
+            IO::Uncompress::Adapter::UnLzma::mkUncompZipObject($LzmaPropertyData);
+
+        *$self->{Uncomp} = $obj;
+    }
+    elsif ($compressedMethod == ZIP_CM_STORE)
+    {
+        *$self->{Type} = 'zip-stored';
+        
+        my $obj =
+        IO::Uncompress::Adapter::Identity::mkUncompObject($streamingMode,
+                                                          $zip64);
+
+        *$self->{Uncomp} = $obj;
+    }
+    else
+    {
+        return $self->HeaderError("Unsupported Compression format $compressedMethod");
+    }
+
+    return {
+        'Type'               => 'zip',
+        'FingerprintLength'  => 4,
+        #'HeaderLength'       => $compressedMethod == 8 ? length $keep : 0,
+        'HeaderLength'       => length $keep,
+        'Zip64'              => $zip64,
+        'TrailerLength'      => ! $streamingMode ? 0 : $zip64 ? 24 : 16,
+        'Header'             => $keep,
+        'CompressedLength'   => $compressedLength ,
+        'UncompressedLength' => $uncompressedLength ,
+        'CRC32'              => $crc32 ,
+        'Name'               => $filename,
+        'Time'               => _dosToUnixTime($lastModTime),
+        'Stream'             => $streamingMode,
+
+        'MethodID'           => $compressedMethod,
+        'MethodName'         => $compressedMethod == ZIP_CM_DEFLATE 
+                                 ? "Deflated" 
+                                 : $compressedMethod == ZIP_CM_BZIP2
+                                     ? "Bzip2"
+                                     : $compressedMethod == ZIP_CM_LZMA
+                                         ? "Lzma"
+                                         : $compressedMethod == ZIP_CM_STORE
+                                             ? "Stored"
+                                             : "Unknown" ,
+
+#        'TextFlag'      => $flag & GZIP_FLG_FTEXT ? 1 : 0,
+#        'HeaderCRCFlag' => $flag & GZIP_FLG_FHCRC ? 1 : 0,
+#        'NameFlag'      => $flag & GZIP_FLG_FNAME ? 1 : 0,
+#        'CommentFlag'   => $flag & GZIP_FLG_FCOMMENT ? 1 : 0,
+#        'ExtraFlag'     => $flag & GZIP_FLG_FEXTRA ? 1 : 0,
+#        'Comment'       => $comment,
+#        'OsID'          => $os,
+#        'OsName'        => defined $GZIP_OS_Names{$os} 
+#                                 ? $GZIP_OS_Names{$os} : "Unknown",
+#        'HeaderCRC'     => $HeaderCRC,
+#        'Flags'         => $flag,
+#        'ExtraFlags'    => $xfl,
+        'ExtraFieldRaw' => $extraField,
+        'ExtraField'    => [ @EXTRA ],
+
+
+      }
+}
+
+sub filterUncompressed
+{
+    my $self = shift ;
+
+    if (*$self->{ZipData}{Method} == ZIP_CM_DEFLATE) {
+        *$self->{ZipData}{CRC32} = *$self->{Uncomp}->crc32() ;
+    }
+    else {
+        *$self->{ZipData}{CRC32} = Compress::Raw::Zlib::crc32(${$_[0]}, *$self->{ZipData}{CRC32}, $_[1]);
+    }
+}    
+
+
+# from Archive::Zip & info-zip
+sub _dosToUnixTime
+{
+	my $dt = shift;
+
+	my $year = ( ( $dt >> 25 ) & 0x7f ) + 80;
+	my $mon  = ( ( $dt >> 21 ) & 0x0f ) - 1;
+	my $mday = ( ( $dt >> 16 ) & 0x1f );
+
+	my $hour = ( ( $dt >> 11 ) & 0x1f );
+	my $min  = ( ( $dt >> 5 ) & 0x3f );
+	my $sec  = ( ( $dt << 1 ) & 0x3e );
+
+
+    use POSIX 'mktime';
+
+    my $time_t = mktime( $sec, $min, $hour, $mday, $mon, $year, 0, 0, -1 );
+    return 0 if ! defined $time_t;
+	return $time_t;
+}
+
+#sub scanCentralDirectory
+#{
+#    # Use cases
+#    # 1 32-bit CD
+#    # 2 64-bit CD
+#
+#    my $self = shift ;
+#
+#    my @CD = ();
+#    my $offset = $self->findCentralDirectoryOffset();
+#
+#    return 0
+#        if ! defined $offset;
+#
+#    $self->smarkSeek($offset, 0, SEEK_SET) ;
+#
+#    # Now walk the Central Directory Records
+#    my $buffer ;
+#    while ($self->smartReadExact(\$buffer, 46) && 
+#           unpack("V", $buffer) == ZIP_CENTRAL_HDR_SIG) {
+#
+#        my $compressedLength   = unpack ("V", substr($buffer, 20, 4));
+#        my $filename_length    = unpack ("v", substr($buffer, 28, 2));
+#        my $extra_length       = unpack ("v", substr($buffer, 30, 2));
+#        my $comment_length     = unpack ("v", substr($buffer, 32, 2));
+#
+#        $self->smarkSeek($filename_length + $extra_length + $comment_length, 0, SEEK_CUR) 
+#            if $extra_length || $comment_length || $filename_length;
+#        push @CD, $compressedLength ;
+#    }
+#
+#}
+#
+#sub findCentralDirectoryOffset
+#{
+#    my $self = shift ;
+#
+#    # Most common use-case is where there is no comment, so
+#    # know exactly where the end of central directory record
+#    # should be.
+#
+#    $self->smarkSeek(-22, 0, SEEK_END) ;
+#
+#    my $buffer;
+#    $self->smartReadExact(\$buffer, 22) ;
+#
+#    my $zip64 = 0;                             
+#    my $centralDirOffset ;
+#    if ( unpack("V", $buffer) == ZIP_END_CENTRAL_HDR_SIG ) {
+#        $centralDirOffset = unpack ("V", substr($buffer, 16, 2));
+#    }
+#    else {
+#        die "xxxx";
+#    }
+#
+#    return $centralDirOffset ;
+#}
+#
+#sub is84BitCD
+#{
+#    # TODO
+#    my $self = shift ;
+#}
+
+
+sub skip
+{
+    my $self = shift;
+    my $size = shift;
+
+    use Fcntl qw(SEEK_CUR);
+    if (ref $size eq 'U64') {
+        $self->smartSeek($size->get64bit(), SEEK_CUR);
+    }
+    else {
+        $self->smartSeek($size, SEEK_CUR);
+    }
+    
+}
+
+
+sub scanCentralDirectory
+{
+    my $self = shift;
+
+    my $here = $self->tell();
+
+    # Use cases
+    # 1 32-bit CD
+    # 2 64-bit CD
+
+    my @CD = ();
+    my $offset = $self->findCentralDirectoryOffset();
+
+    return ()
+        if ! defined $offset;
+
+    $self->smarkSeek($offset, 0, SEEK_SET) ;
+
+    # Now walk the Central Directory Records
+    my $buffer ;
+    while ($self->smartReadExact(\$buffer, 46) && 
+           unpack("V", $buffer) == ZIP_CENTRAL_HDR_SIG) {
+
+        my $compressedLength   = unpack("V", substr($buffer, 20, 4));
+        my $uncompressedLength = unpack("V", substr($buffer, 24, 4));
+        my $filename_length    = unpack("v", substr($buffer, 28, 2));
+        my $extra_length       = unpack("v", substr($buffer, 30, 2));
+        my $comment_length     = unpack("v", substr($buffer, 32, 2));
+
+        $self->skip($filename_length ) ;
+
+        my $v64 = new U64 $compressedLength ;
+
+        if (U64::full32 $compressedLength ) {
+            $self->smartReadExact(\$buffer, $extra_length) ;
+            die "xxx $offset $comment_length $filename_length $extra_length" . length($buffer) 
+                if length($buffer) != $extra_length;
+            my $got = $self->get64Extra($buffer, U64::full32 $uncompressedLength);
+
+            # If not Zip64 extra field, assume size is 0xFFFFFFFF
+            $v64 = $got if defined $got;
+        }
+        else {
+            $self->skip($extra_length) ;
+        }
+
+        $self->skip($comment_length ) ;
+            
+        push @CD, $v64 ;
+    }
+
+    $self->smartSeek($here, 0, SEEK_SET) ;
+
+    return @CD;
+}
+
+sub get64Extra
+{
+    my $self = shift ;
+
+    my $buffer = shift;
+    my $is_uncomp = shift ;
+
+    my $extra = IO::Compress::Zlib::Extra::findID(0x0001, $buffer);
+                                            
+    if (! defined $extra)
+    {
+        return undef;
+    }
+    else
+    {
+        my $u64 = U64::newUnpack_V64(substr($extra,  $is_uncomp ? 8 : 0)) ;
+        return $u64;
+    }    
+}
+
+sub offsetFromZip64
+{
+    my $self = shift ;
+    my $here = shift;
+
+    $self->smartSeek($here - 20, 0, SEEK_SET) 
+        or die "xx $!" ;
+
+    my $buffer;
+    my $got = 0;
+    $self->smartReadExact(\$buffer, 20)  
+        or die "xxx $here $got $!" ;
+
+    if ( unpack("V", $buffer) == ZIP64_END_CENTRAL_LOC_HDR_SIG ) {
+        my $cd64 = U64::Value_VV64 substr($buffer,  8, 8);
+       
+        $self->smartSeek($cd64, 0, SEEK_SET) ;
+
+        $self->smartReadExact(\$buffer, 4) 
+            or die "xxx" ;
+
+        if ( unpack("V", $buffer) == ZIP64_END_CENTRAL_REC_HDR_SIG ) {
+
+            $self->smartReadExact(\$buffer, 8)
+                or die "xxx" ;
+            my $size  = U64::Value_VV64($buffer);
+            $self->smartReadExact(\$buffer, $size)
+                or die "xxx" ;
+
+            my $cd64 =  U64::Value_VV64 substr($buffer,  36, 8);
+
+            return $cd64 ;
+        }
+        
+        die "zzz";
+    }
+
+    die "zzz";
+}
+
+use constant Pack_ZIP_END_CENTRAL_HDR_SIG => pack("V", ZIP_END_CENTRAL_HDR_SIG);
+
+sub findCentralDirectoryOffset
+{
+    my $self = shift ;
+
+    # Most common use-case is where there is no comment, so
+    # know exactly where the end of central directory record
+    # should be.
+
+    $self->smartSeek(-22, 0, SEEK_END) ;
+    my $here = $self->tell();
+
+    my $buffer;
+    $self->smartReadExact(\$buffer, 22) 
+        or die "xxx" ;
+
+    my $zip64 = 0;                             
+    my $centralDirOffset ;
+    if ( unpack("V", $buffer) == ZIP_END_CENTRAL_HDR_SIG ) {
+        $centralDirOffset = unpack("V", substr($buffer, 16,  4));
+    }
+    else {
+        $self->smartSeek(0, 0, SEEK_END) ;
+
+        my $fileLen = $self->tell();
+        my $want = 0 ;
+
+        while(1) {
+            $want += 1024;
+            my $seekTo = $fileLen - $want;
+            if ($seekTo < 0 ) {
+                $seekTo = 0;
+                $want = $fileLen ;
+            }
+            $self->smartSeek( $seekTo, 0, SEEK_SET) 
+                or die "xxx $!" ;
+            my $got;
+            $self->smartReadExact($buffer, $want)
+                or die "xxx " ;
+            my $pos = rindex( $buffer, Pack_ZIP_END_CENTRAL_HDR_SIG);
+
+            if ($pos >= 0) {
+                #$here = $self->tell();
+                $here = $seekTo + $pos ;
+                $centralDirOffset = unpack("V", substr($buffer, $pos + 16,  4));
+                last ;
+            }
+
+            return undef
+                if $want == $fileLen;
+        }
+    }
+
+    $centralDirOffset = $self->offsetFromZip64($here)
+        if U64::full32 $centralDirOffset ;
+
+    return $centralDirOffset ;
+}
+
+1;
+
+__END__
+
+
+=head1 NAME
+
+IO::Uncompress::Unzip - Read zip files/buffers
+
+=head1 SYNOPSIS
+
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+    my $status = unzip $input => $output [,OPTS]
+        or die "unzip failed: $UnzipError\n";
+
+    my $z = new IO::Uncompress::Unzip $input [OPTS] 
+        or die "unzip failed: $UnzipError\n";
+
+    $status = $z->read($buffer)
+    $status = $z->read($buffer, $length)
+    $status = $z->read($buffer, $length, $offset)
+    $line = $z->getline()
+    $char = $z->getc()
+    $char = $z->ungetc()
+    $char = $z->opened()
+
+    $status = $z->inflateSync()
+
+    $data = $z->trailingData()
+    $status = $z->nextStream()
+    $data = $z->getHeaderInfo()
+    $z->tell()
+    $z->seek($position, $whence)
+    $z->binmode()
+    $z->fileno()
+    $z->eof()
+    $z->close()
+
+    $UnzipError ;
+
+    # IO::File mode
+
+    <$z>
+    read($z, $buffer);
+    read($z, $buffer, $length);
+    read($z, $buffer, $length, $offset);
+    tell($z)
+    seek($z, $position, $whence)
+    binmode($z)
+    fileno($z)
+    eof($z)
+    close($z)
+
+=head1 DESCRIPTION
+
+This module provides a Perl interface that allows the reading of
+zlib files/buffers.
+
+For writing zip files/buffers, see the companion module IO::Compress::Zip.
+
+=head1 Functional Interface
+
+A top-level function, C<unzip>, is provided to carry out
+"one-shot" uncompression between buffers and/or files. For finer
+control over the uncompression process, see the L</"OO Interface">
+section.
+
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+    unzip $input_filename_or_reference => $output_filename_or_reference [,OPTS] 
+        or die "unzip failed: $UnzipError\n";
+
+The functional interface needs Perl5.005 or better.
+
+=head2 unzip $input_filename_or_reference => $output_filename_or_reference [, OPTS]
+
+C<unzip> expects at least two parameters,
+C<$input_filename_or_reference> and C<$output_filename_or_reference>.
+
+=head3 The C<$input_filename_or_reference> parameter
+
+The parameter, C<$input_filename_or_reference>, is used to define the
+source of the compressed data. 
+
+It can take one of the following forms:
+
+=over 5
+
+=item A filename
+
+If the <$input_filename_or_reference> parameter is a simple scalar, it is
+assumed to be a filename. This file will be opened for reading and the
+input data will be read from it.
+
+=item A filehandle
+
+If the C<$input_filename_or_reference> parameter is a filehandle, the input
+data will be read from it.  The string '-' can be used as an alias for
+standard input.
+
+=item A scalar reference 
+
+If C<$input_filename_or_reference> is a scalar reference, the input data
+will be read from C<$$input_filename_or_reference>.
+
+=item An array reference 
+
+If C<$input_filename_or_reference> is an array reference, each element in
+the array must be a filename.
+
+The input data will be read from each file in turn. 
+
+The complete array will be walked to ensure that it only
+contains valid filenames before any data is uncompressed.
+
+=item An Input FileGlob string
+
+If C<$input_filename_or_reference> is a string that is delimited by the
+characters "<" and ">" C<unzip> will assume that it is an 
+I<input fileglob string>. The input is the list of files that match the 
+fileglob.
+
+See L<File::GlobMapper|File::GlobMapper> for more details.
+
+=back
+
+If the C<$input_filename_or_reference> parameter is any other type,
+C<undef> will be returned.
+
+=head3 The C<$output_filename_or_reference> parameter
+
+The parameter C<$output_filename_or_reference> is used to control the
+destination of the uncompressed data. This parameter can take one of
+these forms.
+
+=over 5
+
+=item A filename
+
+If the C<$output_filename_or_reference> parameter is a simple scalar, it is
+assumed to be a filename.  This file will be opened for writing and the 
+uncompressed data will be written to it.
+
+=item A filehandle
+
+If the C<$output_filename_or_reference> parameter is a filehandle, the
+uncompressed data will be written to it.  The string '-' can be used as
+an alias for standard output.
+
+=item A scalar reference 
+
+If C<$output_filename_or_reference> is a scalar reference, the
+uncompressed data will be stored in C<$$output_filename_or_reference>.
+
+=item An Array Reference
+
+If C<$output_filename_or_reference> is an array reference, 
+the uncompressed data will be pushed onto the array.
+
+=item An Output FileGlob
+
+If C<$output_filename_or_reference> is a string that is delimited by the
+characters "<" and ">" C<unzip> will assume that it is an
+I<output fileglob string>. The output is the list of files that match the
+fileglob.
+
+When C<$output_filename_or_reference> is an fileglob string,
+C<$input_filename_or_reference> must also be a fileglob string. Anything
+else is an error.
+
+See L<File::GlobMapper|File::GlobMapper> for more details.
+
+=back
+
+If the C<$output_filename_or_reference> parameter is any other type,
+C<undef> will be returned.
+
+=head2 Notes
+
+When C<$input_filename_or_reference> maps to multiple compressed
+files/buffers and C<$output_filename_or_reference> is
+a single file/buffer, after uncompression C<$output_filename_or_reference> will contain a
+concatenation of all the uncompressed data from each of the input
+files/buffers.
+
+=head2 Optional Parameters
+
+Unless specified below, the optional parameters for C<unzip>,
+C<OPTS>, are the same as those used with the OO interface defined in the
+L</"Constructor Options"> section below.
+
+=over 5
+
+=item C<< AutoClose => 0|1 >>
+
+This option applies to any input or output data streams to 
+C<unzip> that are filehandles.
+
+If C<AutoClose> is specified, and the value is true, it will result in all
+input and/or output filehandles being closed once C<unzip> has
+completed.
+
+This parameter defaults to 0.
+
+=item C<< BinModeOut => 0|1 >>
+
+When writing to a file or filehandle, set C<binmode> before writing to the
+file.
+
+Defaults to 0.
+
+=item C<< Append => 0|1 >>
+
+The behaviour of this option is dependent on the type of output data
+stream.
+
+=over 5
+
+=item * A Buffer
+
+If C<Append> is enabled, all uncompressed data will be append to the end of
+the output buffer. Otherwise the output buffer will be cleared before any
+uncompressed data is written to it.
+
+=item * A Filename
+
+If C<Append> is enabled, the file will be opened in append mode. Otherwise
+the contents of the file, if any, will be truncated before any uncompressed
+data is written to it.
+
+=item * A Filehandle
+
+If C<Append> is enabled, the filehandle will be positioned to the end of
+the file via a call to C<seek> before any uncompressed data is
+written to it.  Otherwise the file pointer will not be moved.
+
+=back
+
+When C<Append> is specified, and set to true, it will I<append> all uncompressed 
+data to the output data stream.
+
+So when the output is a filehandle it will carry out a seek to the eof
+before writing any uncompressed data. If the output is a filename, it will be opened for
+appending. If the output is a buffer, all uncompressed data will be
+appended to the existing buffer.
+
+Conversely when C<Append> is not specified, or it is present and is set to
+false, it will operate as follows.
+
+When the output is a filename, it will truncate the contents of the file
+before writing any uncompressed data. If the output is a filehandle
+its position will not be changed. If the output is a buffer, it will be
+wiped before any uncompressed data is output.
+
+Defaults to 0.
+
+=item C<< MultiStream => 0|1 >>
+
+If the input file/buffer contains multiple compressed data streams, this
+option will uncompress the whole lot as a single data stream.
+
+Defaults to 0.
+
+=item C<< TrailingData => $scalar >>
+
+Returns the data, if any, that is present immediately after the compressed
+data stream once uncompression is complete. 
+
+This option can be used when there is useful information immediately
+following the compressed data stream, and you don't know the length of the
+compressed data stream.
+
+If the input is a buffer, C<trailingData> will return everything from the
+end of the compressed data stream to the end of the buffer.
+
+If the input is a filehandle, C<trailingData> will return the data that is
+left in the filehandle input buffer once the end of the compressed data
+stream has been reached. You can then use the filehandle to read the rest
+of the input file. 
+
+Don't bother using C<trailingData> if the input is a filename.
+
+If you know the length of the compressed data stream before you start
+uncompressing, you can avoid having to use C<trailingData> by setting the
+C<InputLength> option.
+
+=back
+
+=head2 Examples
+
+Say you have a zip file, C<file1.zip>, that only contains a
+single member, you can read it and write the uncompressed data to the
+file C<file1.txt> like this.
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+    my $input = "file1.zip";
+    my $output = "file1.txt";
+    unzip $input => $output
+        or die "unzip failed: $UnzipError\n";
+
+If you have a zip file that contains multiple members and want to read a
+specific member from the file, say C<"data1">, use the C<Name> option 
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+    my $input = "file1.zip";
+    my $output = "file1.txt";
+    unzip $input => $output, Name => "data1"
+        or die "unzip failed: $UnzipError\n";
+
+Alternatively, if you want to read the  C<"data1"> member into memory, use
+a scalar reference for the C<output> parameter.
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+    my $input = "file1.zip";
+    my $output ;
+    unzip $input => \$output, Name => "data1"
+        or die "unzip failed: $UnzipError\n";
+    # $output now contains the uncompressed data
+
+To read from an existing Perl filehandle, C<$input>, and write the
+uncompressed data to a buffer, C<$buffer>.
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+    use IO::File ;
+
+    my $input = new IO::File "<file1.zip"
+        or die "Cannot open 'file1.zip': $!\n" ;
+    my $buffer ;
+    unzip $input => \$buffer 
+        or die "unzip failed: $UnzipError\n";
+
+=head1 OO Interface
+
+=head2 Constructor
+
+The format of the constructor for IO::Uncompress::Unzip is shown below
+
+    my $z = new IO::Uncompress::Unzip $input [OPTS]
+        or die "IO::Uncompress::Unzip failed: $UnzipError\n";
+
+Returns an C<IO::Uncompress::Unzip> object on success and undef on failure.
+The variable C<$UnzipError> will contain an error message on failure.
+
+If you are running Perl 5.005 or better the object, C<$z>, returned from
+IO::Uncompress::Unzip can be used exactly like an L<IO::File|IO::File> filehandle.
+This means that all normal input file operations can be carried out with
+C<$z>.  For example, to read a line from a compressed file/buffer you can
+use either of these forms
+
+    $line = $z->getline();
+    $line = <$z>;
+
+The mandatory parameter C<$input> is used to determine the source of the
+compressed data. This parameter can take one of three forms.
+
+=over 5
+
+=item A filename
+
+If the C<$input> parameter is a scalar, it is assumed to be a filename. This
+file will be opened for reading and the compressed data will be read from it.
+
+=item A filehandle
+
+If the C<$input> parameter is a filehandle, the compressed data will be
+read from it.
+The string '-' can be used as an alias for standard input.
+
+=item A scalar reference 
+
+If C<$input> is a scalar reference, the compressed data will be read from
+C<$$input>.
+
+=back
+
+=head2 Constructor Options
+
+The option names defined below are case insensitive and can be optionally
+prefixed by a '-'.  So all of the following are valid
+
+    -AutoClose
+    -autoclose
+    AUTOCLOSE
+    autoclose
+
+OPTS is a combination of the following options:
+
+=over 5
+
+=item C<< Name => "membername" >>
+
+Open "membername" from the zip file for reading. 
+
+=item C<< AutoClose => 0|1 >>
+
+This option is only valid when the C<$input> parameter is a filehandle. If
+specified, and the value is true, it will result in the file being closed once
+either the C<close> method is called or the IO::Uncompress::Unzip object is
+destroyed.
+
+This parameter defaults to 0.
+
+=item C<< MultiStream => 0|1 >>
+
+Treats the complete zip file/buffer as a single compressed data
+stream. When reading in multi-stream mode each member of the zip
+file/buffer will be uncompressed in turn until the end of the file/buffer
+is encountered.
+
+This parameter defaults to 0.
+
+=item C<< Prime => $string >>
+
+This option will uncompress the contents of C<$string> before processing the
+input file/buffer.
+
+This option can be useful when the compressed data is embedded in another
+file/data structure and it is not possible to work out where the compressed
+data begins without having to read the first few bytes. If this is the
+case, the uncompression can be I<primed> with these bytes using this
+option.
+
+=item C<< Transparent => 0|1 >>
+
+If this option is set and the input file/buffer is not compressed data,
+the module will allow reading of it anyway.
+
+In addition, if the input file/buffer does contain compressed data and
+there is non-compressed data immediately following it, setting this option
+will make this module treat the whole file/buffer as a single data stream.
+
+This option defaults to 1.
+
+=item C<< BlockSize => $num >>
+
+When reading the compressed input data, IO::Uncompress::Unzip will read it in
+blocks of C<$num> bytes.
+
+This option defaults to 4096.
+
+=item C<< InputLength => $size >>
+
+When present this option will limit the number of compressed bytes read
+from the input file/buffer to C<$size>. This option can be used in the
+situation where there is useful data directly after the compressed data
+stream and you know beforehand the exact length of the compressed data
+stream. 
+
+This option is mostly used when reading from a filehandle, in which case
+the file pointer will be left pointing to the first byte directly after the
+compressed data stream.
+
+This option defaults to off.
+
+=item C<< Append => 0|1 >>
+
+This option controls what the C<read> method does with uncompressed data.
+
+If set to 1, all uncompressed data will be appended to the output parameter
+of the C<read> method.
+
+If set to 0, the contents of the output parameter of the C<read> method
+will be overwritten by the uncompressed data.
+
+Defaults to 0.
+
+=item C<< Strict => 0|1 >>
+
+This option controls whether the extra checks defined below are used when
+carrying out the decompression. When Strict is on, the extra tests are
+carried out, when Strict is off they are not.
+
+The default for this option is off.
+
+=back
+
+=head2 Examples
+
+TODO
+
+=head1 Methods 
+
+=head2 read
+
+Usage is
+
+    $status = $z->read($buffer)
+
+Reads a block of compressed data (the size of the compressed block is
+determined by the C<Buffer> option in the constructor), uncompresses it and
+writes any uncompressed data into C<$buffer>. If the C<Append> parameter is
+set in the constructor, the uncompressed data will be appended to the
+C<$buffer> parameter. Otherwise C<$buffer> will be overwritten.
+
+Returns the number of uncompressed bytes written to C<$buffer>, zero if eof
+or a negative number on error.
+
+=head2 read
+
+Usage is
+
+    $status = $z->read($buffer, $length)
+    $status = $z->read($buffer, $length, $offset)
+
+    $status = read($z, $buffer, $length)
+    $status = read($z, $buffer, $length, $offset)
+
+Attempt to read C<$length> bytes of uncompressed data into C<$buffer>.
+
+The main difference between this form of the C<read> method and the
+previous one, is that this one will attempt to return I<exactly> C<$length>
+bytes. The only circumstances that this function will not is if end-of-file
+or an IO error is encountered.
+
+Returns the number of uncompressed bytes written to C<$buffer>, zero if eof
+or a negative number on error.
+
+=head2 getline
+
+Usage is
+
+    $line = $z->getline()
+    $line = <$z>
+
+Reads a single line. 
+
+This method fully supports the use of the variable C<$/> (or
+C<$INPUT_RECORD_SEPARATOR> or C<$RS> when C<English> is in use) to
+determine what constitutes an end of line. Paragraph mode, record mode and
+file slurp mode are all supported. 
+
+=head2 getc
+
+Usage is 
+
+    $char = $z->getc()
+
+Read a single character.
+
+=head2 ungetc
+
+Usage is
+
+    $char = $z->ungetc($string)
+
+=head2 inflateSync
+
+Usage is
+
+    $status = $z->inflateSync()
+
+TODO
+
+=head2 getHeaderInfo
+
+Usage is
+
+    $hdr  = $z->getHeaderInfo();
+    @hdrs = $z->getHeaderInfo();
+
+This method returns either a hash reference (in scalar context) or a list
+or hash references (in array context) that contains information about each
+of the header fields in the compressed data stream(s).
+
+=head2 tell
+
+Usage is
+
+    $z->tell()
+    tell $z
+
+Returns the uncompressed file offset.
+
+=head2 eof
+
+Usage is
+
+    $z->eof();
+    eof($z);
+
+Returns true if the end of the compressed input stream has been reached.
+
+=head2 seek
+
+    $z->seek($position, $whence);
+    seek($z, $position, $whence);
+
+Provides a sub-set of the C<seek> functionality, with the restriction
+that it is only legal to seek forward in the input file/buffer.
+It is a fatal error to attempt to seek backward.
+
+Note that the implementation of C<seek> in this module does not provide
+true random access to a compressed file/buffer. It  works by uncompressing
+data from the current offset in the file/buffer until it reaches the
+uncompressed offset specified in the parameters to C<seek>. For very small
+files this may be acceptable behaviour. For large files it may cause an
+unacceptable delay.
+
+The C<$whence> parameter takes one the usual values, namely SEEK_SET,
+SEEK_CUR or SEEK_END.
+
+Returns 1 on success, 0 on failure.
+
+=head2 binmode
+
+Usage is
+
+    $z->binmode
+    binmode $z ;
+
+This is a noop provided for completeness.
+
+=head2 opened
+
+    $z->opened()
+
+Returns true if the object currently refers to a opened file/buffer. 
+
+=head2 autoflush
+
+    my $prev = $z->autoflush()
+    my $prev = $z->autoflush(EXPR)
+
+If the C<$z> object is associated with a file or a filehandle, this method
+returns the current autoflush setting for the underlying filehandle. If
+C<EXPR> is present, and is non-zero, it will enable flushing after every
+write/print operation.
+
+If C<$z> is associated with a buffer, this method has no effect and always
+returns C<undef>.
+
+B<Note> that the special variable C<$|> B<cannot> be used to set or
+retrieve the autoflush setting.
+
+=head2 input_line_number
+
+    $z->input_line_number()
+    $z->input_line_number(EXPR)
+
+Returns the current uncompressed line number. If C<EXPR> is present it has
+the effect of setting the line number. Note that setting the line number
+does not change the current position within the file/buffer being read.
+
+The contents of C<$/> are used to determine what constitutes a line
+terminator.
+
+=head2 fileno
+
+    $z->fileno()
+    fileno($z)
+
+If the C<$z> object is associated with a file or a filehandle, C<fileno>
+will return the underlying file descriptor. Once the C<close> method is
+called C<fileno> will return C<undef>.
+
+If the C<$z> object is associated with a buffer, this method will return
+C<undef>.
+
+=head2 close
+
+    $z->close() ;
+    close $z ;
+
+Closes the output file/buffer. 
+
+For most versions of Perl this method will be automatically invoked if
+the IO::Uncompress::Unzip object is destroyed (either explicitly or by the
+variable with the reference to the object going out of scope). The
+exceptions are Perl versions 5.005 through 5.00504 and 5.8.0. In
+these cases, the C<close> method will be called automatically, but
+not until global destruction of all live objects when the program is
+terminating.
+
+Therefore, if you want your scripts to be able to run on all versions
+of Perl, you should call C<close> explicitly and not rely on automatic
+closing.
+
+Returns true on success, otherwise 0.
+
+If the C<AutoClose> option has been enabled when the IO::Uncompress::Unzip
+object was created, and the object is associated with a file, the
+underlying file will also be closed.
+
+=head2 nextStream
+
+Usage is
+
+    my $status = $z->nextStream();
+
+Skips to the next compressed data stream in the input file/buffer. If a new
+compressed data stream is found, the eof marker will be cleared and C<$.>
+will be reset to 0.
+
+Returns 1 if a new stream was found, 0 if none was found, and -1 if an
+error was encountered.
+
+=head2 trailingData
+
+Usage is
+
+    my $data = $z->trailingData();
+
+Returns the data, if any, that is present immediately after the compressed
+data stream once uncompression is complete. It only makes sense to call
+this method once the end of the compressed data stream has been
+encountered.
+
+This option can be used when there is useful information immediately
+following the compressed data stream, and you don't know the length of the
+compressed data stream.
+
+If the input is a buffer, C<trailingData> will return everything from the
+end of the compressed data stream to the end of the buffer.
+
+If the input is a filehandle, C<trailingData> will return the data that is
+left in the filehandle input buffer once the end of the compressed data
+stream has been reached. You can then use the filehandle to read the rest
+of the input file. 
+
+Don't bother using C<trailingData> if the input is a filename.
+
+If you know the length of the compressed data stream before you start
+uncompressing, you can avoid having to use C<trailingData> by setting the
+C<InputLength> option in the constructor.
+
+=head1 Importing 
+
+No symbolic constants are required by this IO::Uncompress::Unzip at present. 
+
+=over 5
+
+=item :all
+
+Imports C<unzip> and C<$UnzipError>.
+Same as doing this
+
+    use IO::Uncompress::Unzip qw(unzip $UnzipError) ;
+
+=back
+
+=head1 EXAMPLES
+
+=head2 Working with Net::FTP
+
+See L<IO::Compress::FAQ|IO::Compress::FAQ/"Compressed files and Net::FTP">
+
+=head2 Walking through a zip file
+
+The code below can be used to traverse a zip file, one compressed data
+stream at a time.
+
+    use IO::Uncompress::Unzip qw($UnzipError);
+
+    my $zipfile = "somefile.zip";
+    my $u = new IO::Uncompress::Unzip $zipfile
+        or die "Cannot open $zipfile: $UnzipError";
+
+    my $status;
+    for ($status = 1; $status > 0; $status = $u->nextStream())
+    {
+ 
+        my $name = $u->getHeaderInfo()->{Name};
+        warn "Processing member $name\n" ;
+
+        my $buff;
+        while (($status = $u->read($buff)) > 0) {
+            # Do something here
+        }
+
+        last if $status < 0;
+    }
+
+    die "Error processing $zipfile: $!\n"
+        if $status < 0 ;
+
+Each individual compressed data stream is read until the logical
+end-of-file is reached. Then C<nextStream> is called. This will skip to the
+start of the next compressed data stream and clear the end-of-file flag.
+
+It is also worth noting that C<nextStream> can be called at any time -- you
+don't have to wait until you have exhausted a compressed data stream before
+skipping to the next one.
+
+=head2 Unzipping a complete zip file to disk
+
+Daniel S. Sterling has written a script that uses C<IO::Uncompress::UnZip>
+to read a zip file and unzip its contents to disk.
+
+The script is available from L<https://gist.github.com/eqhmcow/5389877>
+
+=head1 SEE ALSO
+
+L<Compress::Zlib>, L<IO::Compress::Gzip>, L<IO::Uncompress::Gunzip>, L<IO::Compress::Deflate>, L<IO::Uncompress::Inflate>, L<IO::Compress::RawDeflate>, L<IO::Uncompress::RawInflate>, L<IO::Compress::Bzip2>, L<IO::Uncompress::Bunzip2>, L<IO::Compress::Lzma>, L<IO::Uncompress::UnLzma>, L<IO::Compress::Xz>, L<IO::Uncompress::UnXz>, L<IO::Compress::Lzop>, L<IO::Uncompress::UnLzop>, L<IO::Compress::Lzf>, L<IO::Uncompress::UnLzf>, L<IO::Uncompress::AnyInflate>, L<IO::Uncompress::AnyUncompress>
+
+L<IO::Compress::FAQ|IO::Compress::FAQ>
+
+L<File::GlobMapper|File::GlobMapper>, L<Archive::Zip|Archive::Zip>,
+L<Archive::Tar|Archive::Tar>,
+L<IO::Zlib|IO::Zlib>
+
+For RFC 1950, 1951 and 1952 see 
+F<http://www.faqs.org/rfcs/rfc1950.html>,
+F<http://www.faqs.org/rfcs/rfc1951.html> and
+F<http://www.faqs.org/rfcs/rfc1952.html>
+
+The I<zlib> compression library was written by Jean-loup Gailly
+F<gzip@prep.ai.mit.edu> and Mark Adler F<madler@alumni.caltech.edu>.
+
+The primary site for the I<zlib> compression library is
+F<http://www.zlib.org>.
+
+The primary site for gzip is F<http://www.gzip.org>.
+
+=head1 AUTHOR
+
+This module was written by Paul Marquess, F<pmqs@cpan.org>. 
+
+=head1 MODIFICATION HISTORY
+
+See the Changes file.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2005-2014 Paul Marquess. All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
+package IO::Uncompress::Gunzip ;
+
+require 5.006 ;
+
+# for RFC1952
+
+use strict ;
+use warnings;
+use bytes;
+
+use IO::Uncompress::RawInflate 2.068 ;
+
+use Compress::Raw::Zlib 2.068 () ;
+use IO::Compress::Base::Common 2.068 qw(:Status );
+use IO::Compress::Gzip::Constants 2.068 ;
+use IO::Compress::Zlib::Extra 2.068 ;
+
+require Exporter ;
+
+our ($VERSION, @ISA, @EXPORT_OK, %EXPORT_TAGS, $GunzipError);
+
+@ISA = qw( Exporter IO::Uncompress::RawInflate );
+@EXPORT_OK = qw( $GunzipError gunzip );
+%EXPORT_TAGS = %IO::Uncompress::RawInflate::DEFLATE_CONSTANTS ;
+push @{ $EXPORT_TAGS{all} }, @EXPORT_OK ;
+Exporter::export_ok_tags('all');
+
+$GunzipError = '';
+
+$VERSION = '2.068';
+
+sub new
+{
+    my $class = shift ;
+    $GunzipError = '';
+    my $obj = IO::Compress::Base::Common::createSelfTiedObject($class, \$GunzipError);
+
+    $obj->_create(undef, 0, @_);
+}
+
+sub gunzip
+{
+    my $obj = IO::Compress::Base::Common::createSelfTiedObject(undef, \$GunzipError);
+    return $obj->_inf(@_) ;
+}
+
+sub getExtraParams
+{
+    return ( 'parseextra' => [IO::Compress::Base::Common::Parse_boolean,  0] ) ;
+}
+
+sub ckParams
+{
+    my $self = shift ;
+    my $got = shift ;
+
+    # gunzip always needs crc32
+    $got->setValue('crc32' => 1);
+
+    return 1;
+}
+
+sub ckMagic
+{
+    my $self = shift;
+
+    my $magic ;
+    $self->smartReadExact(\$magic, GZIP_ID_SIZE);
+
+    *$self->{HeaderPending} = $magic ;
+
+    return $self->HeaderError("Minimum header size is " . 
+                              GZIP_MIN_HEADER_SIZE . " bytes") 
+        if length $magic != GZIP_ID_SIZE ;                                    
+
+    return $self->HeaderError("Bad Magic")
+        if ! isGzipMagic($magic) ;
+
+    *$self->{Type} = 'rfc1952';
+
+    return $magic ;
+}
+
+sub readHeader
+{
+    my $self = shift;
+    my $magic = shift;
+
+    return $self->_readGzipHeader($magic);
+}
+
+sub chkTrailer
+{
+    my $self = shift;
+    my $trailer = shift;
+
+    # Check CRC & ISIZE 
+    my ($CRC32, $ISIZE) = unpack("V V", $trailer) ;
+    *$self->{Info}{CRC32} = $CRC32;    
+    *$self->{Info}{ISIZE} = $ISIZE;    
+
+    if (*$self->{Strict}) {
+        return $self->TrailerError("CRC mismatch")
+            if $CRC32 != *$self->{Uncomp}->crc32() ;
+
+        my $exp_isize = *$self->{UnCompSize}->get32bit();
+        return $self->TrailerError("ISIZE mismatch. Got $ISIZE"
+                                  . ", expected $exp_isize")
+            if $ISIZE != $exp_isize ;
+    }
+
+    return STATUS_OK;
+}
+
+sub isGzipMagic
+{
+    my $buffer = shift ;
+    return 0 if length $buffer < GZIP_ID_SIZE ;
+    my ($id1, $id2) = unpack("C C", $buffer) ;
+    return $id1 == GZIP_ID1 && $id2 == GZIP_ID2 ;
+}
+
+sub _readFullGzipHeader($)
+{
+    my ($self) = @_ ;
+    my $magic = '' ;
+
+    $self->smartReadExact(\$magic, GZIP_ID_SIZE);
+
+    *$self->{HeaderPending} = $magic ;
+
+    return $self->HeaderError("Minimum header size is " . 
+                              GZIP_MIN_HEADER_SIZE . " bytes") 
+        if length $magic != GZIP_ID_SIZE ;                                    
+
+
+    return $self->HeaderError("Bad Magic")
+        if ! isGzipMagic($magic) ;
+
+    my $status = $self->_readGzipHeader($magic);
+    delete *$self->{Transparent} if ! defined $status ;
+    return $status ;
+}
+
+sub _readGzipHeader($)
+{
+    my ($self, $magic) = @_ ;
+    my ($HeaderCRC) ;
+    my ($buffer) = '' ;
+
+    $self->smartReadExact(\$buffer, GZIP_MIN_HEADER_SIZE - GZIP_ID_SIZE)
+        or return $self->HeaderError("Minimum header size is " . 
+                                     GZIP_MIN_HEADER_SIZE . " bytes") ;
+
+    my $keep = $magic . $buffer ;
+    *$self->{HeaderPending} = $keep ;
+
+    # now split out the various parts
+    my ($cm, $flag, $mtime, $xfl, $os) = unpack("C C V C C", $buffer) ;
+
+    $cm == GZIP_CM_DEFLATED 
+        or return $self->HeaderError("Not Deflate (CM is $cm)") ;
+
+    # check for use of reserved bits
+    return $self->HeaderError("Use of Reserved Bits in FLG field.")
+        if $flag & GZIP_FLG_RESERVED ; 
+
+    my $EXTRA ;
+    my @EXTRA = () ;
+    if ($flag & GZIP_FLG_FEXTRA) {
+        $EXTRA = "" ;
+        $self->smartReadExact(\$buffer, GZIP_FEXTRA_HEADER_SIZE) 
+            or return $self->TruncatedHeader("FEXTRA Length") ;
+
+        my ($XLEN) = unpack("v", $buffer) ;
+        $self->smartReadExact(\$EXTRA, $XLEN) 
+            or return $self->TruncatedHeader("FEXTRA Body");
+        $keep .= $buffer . $EXTRA ;
+
+        if ($XLEN && *$self->{'ParseExtra'}) {
+            my $bad = IO::Compress::Zlib::Extra::parseRawExtra($EXTRA,
+                                                \@EXTRA, 1, 1);
+            return $self->HeaderError($bad)
+                if defined $bad;
+        }
+    }
+
+    my $origname ;
+    if ($flag & GZIP_FLG_FNAME) {
+        $origname = "" ;
+        while (1) {
+            $self->smartReadExact(\$buffer, 1) 
+                or return $self->TruncatedHeader("FNAME");
+            last if $buffer eq GZIP_NULL_BYTE ;
+            $origname .= $buffer 
+        }
+        $keep .= $origname . GZIP_NULL_BYTE ;
+
+        return $self->HeaderError("Non ISO 8859-1 Character found in Name")
+            if *$self->{Strict} && $origname =~ /$GZIP_FNAME_INVALID_CHAR_RE/o ;
+    }
+
+    my $comment ;
+    if ($flag & GZIP_FLG_FCOMMENT) {
+        $comment = "";
+        while (1) {
+            $self->smartReadExact(\$buffer, 1) 
+                or return $self->TruncatedHeader("FCOMMENT");
+            last if $buffer eq GZIP_NULL_BYTE ;
+            $comment .= $buffer 
+        }
+        $keep .= $comment . GZIP_NULL_BYTE ;
+
+        return $self->HeaderError("Non ISO 8859-1 Character found in Comment")
+            if *$self->{Strict} && $comment =~ /$GZIP_FCOMMENT_INVALID_CHAR_RE/o ;
+    }
+
+    if ($flag & GZIP_FLG_FHCRC) {
+        $self->smartReadExact(\$buffer, GZIP_FHCRC_SIZE) 
+            or return $self->TruncatedHeader("FHCRC");
+
+        $HeaderCRC = unpack("v", $buffer) ;
+        my $crc16 = Compress::Raw::Zlib::crc32($keep) & 0xFF ;
+
+        return $self->HeaderError("CRC16 mismatch.")
+            if *$self->{Strict} && $crc16 != $HeaderCRC;
+
+        $keep .= $buffer ;
+    }
+
+    # Assume compression method is deflated for xfl tests
+    #if ($xfl) {
+    #}
+
+    *$self->{Type} = 'rfc1952';
+
+    return {
+        'Type'          => 'rfc1952',
+        'FingerprintLength'  => 2,
+        'HeaderLength'  => length $keep,
+        'TrailerLength' => GZIP_TRAILER_SIZE,
+        'Header'        => $keep,
+        'isMinimalHeader' => $keep eq GZIP_MINIMUM_HEADER ? 1 : 0,
+
+        'MethodID'      => $cm,
+        'MethodName'    => $cm == GZIP_CM_DEFLATED ? "Deflated" : "Unknown" ,
+        'TextFlag'      => $flag & GZIP_FLG_FTEXT ? 1 : 0,
+        'HeaderCRCFlag' => $flag & GZIP_FLG_FHCRC ? 1 : 0,
+        'NameFlag'      => $flag & GZIP_FLG_FNAME ? 1 : 0,
+        'CommentFlag'   => $flag & GZIP_FLG_FCOMMENT ? 1 : 0,
+        'ExtraFlag'     => $flag & GZIP_FLG_FEXTRA ? 1 : 0,
+        'Name'          => $origname,
+        'Comment'       => $comment,
+        'Time'          => $mtime,
+        'OsID'          => $os,
+        'OsName'        => defined $GZIP_OS_Names{$os} 
+                                 ? $GZIP_OS_Names{$os} : "Unknown",
+        'HeaderCRC'     => $HeaderCRC,
+        'Flags'         => $flag,
+        'ExtraFlags'    => $xfl,
+        'ExtraFieldRaw' => $EXTRA,
+        'ExtraField'    => [ @EXTRA ],
+
+
+        #'CompSize'=> $compsize,
+        #'CRC32'=> $CRC32,
+        #'OrigSize'=> $ISIZE,
+      }
+}
+
+
+1;
+
+__END__
+
+
+=head1 NAME
+
+IO::Uncompress::Gunzip - Read RFC 1952 files/buffers
+
+=head1 SYNOPSIS
+
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+    my $status = gunzip $input => $output [,OPTS]
+        or die "gunzip failed: $GunzipError\n";
+
+    my $z = new IO::Uncompress::Gunzip $input [OPTS] 
+        or die "gunzip failed: $GunzipError\n";
+
+    $status = $z->read($buffer)
+    $status = $z->read($buffer, $length)
+    $status = $z->read($buffer, $length, $offset)
+    $line = $z->getline()
+    $char = $z->getc()
+    $char = $z->ungetc()
+    $char = $z->opened()
+
+    $status = $z->inflateSync()
+
+    $data = $z->trailingData()
+    $status = $z->nextStream()
+    $data = $z->getHeaderInfo()
+    $z->tell()
+    $z->seek($position, $whence)
+    $z->binmode()
+    $z->fileno()
+    $z->eof()
+    $z->close()
+
+    $GunzipError ;
+
+    # IO::File mode
+
+    <$z>
+    read($z, $buffer);
+    read($z, $buffer, $length);
+    read($z, $buffer, $length, $offset);
+    tell($z)
+    seek($z, $position, $whence)
+    binmode($z)
+    fileno($z)
+    eof($z)
+    close($z)
+
+=head1 DESCRIPTION
+
+This module provides a Perl interface that allows the reading of
+files/buffers that conform to RFC 1952.
+
+For writing RFC 1952 files/buffers, see the companion module IO::Compress::Gzip.
+
+=head1 Functional Interface
+
+A top-level function, C<gunzip>, is provided to carry out
+"one-shot" uncompression between buffers and/or files. For finer
+control over the uncompression process, see the L</"OO Interface">
+section.
+
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+    gunzip $input_filename_or_reference => $output_filename_or_reference [,OPTS] 
+        or die "gunzip failed: $GunzipError\n";
+
+The functional interface needs Perl5.005 or better.
+
+=head2 gunzip $input_filename_or_reference => $output_filename_or_reference [, OPTS]
+
+C<gunzip> expects at least two parameters,
+C<$input_filename_or_reference> and C<$output_filename_or_reference>.
+
+=head3 The C<$input_filename_or_reference> parameter
+
+The parameter, C<$input_filename_or_reference>, is used to define the
+source of the compressed data. 
+
+It can take one of the following forms:
+
+=over 5
+
+=item A filename
+
+If the <$input_filename_or_reference> parameter is a simple scalar, it is
+assumed to be a filename. This file will be opened for reading and the
+input data will be read from it.
+
+=item A filehandle
+
+If the C<$input_filename_or_reference> parameter is a filehandle, the input
+data will be read from it.  The string '-' can be used as an alias for
+standard input.
+
+=item A scalar reference 
+
+If C<$input_filename_or_reference> is a scalar reference, the input data
+will be read from C<$$input_filename_or_reference>.
+
+=item An array reference 
+
+If C<$input_filename_or_reference> is an array reference, each element in
+the array must be a filename.
+
+The input data will be read from each file in turn. 
+
+The complete array will be walked to ensure that it only
+contains valid filenames before any data is uncompressed.
+
+=item An Input FileGlob string
+
+If C<$input_filename_or_reference> is a string that is delimited by the
+characters "<" and ">" C<gunzip> will assume that it is an 
+I<input fileglob string>. The input is the list of files that match the 
+fileglob.
+
+See L<File::GlobMapper|File::GlobMapper> for more details.
+
+=back
+
+If the C<$input_filename_or_reference> parameter is any other type,
+C<undef> will be returned.
+
+=head3 The C<$output_filename_or_reference> parameter
+
+The parameter C<$output_filename_or_reference> is used to control the
+destination of the uncompressed data. This parameter can take one of
+these forms.
+
+=over 5
+
+=item A filename
+
+If the C<$output_filename_or_reference> parameter is a simple scalar, it is
+assumed to be a filename.  This file will be opened for writing and the 
+uncompressed data will be written to it.
+
+=item A filehandle
+
+If the C<$output_filename_or_reference> parameter is a filehandle, the
+uncompressed data will be written to it.  The string '-' can be used as
+an alias for standard output.
+
+=item A scalar reference 
+
+If C<$output_filename_or_reference> is a scalar reference, the
+uncompressed data will be stored in C<$$output_filename_or_reference>.
+
+=item An Array Reference
+
+If C<$output_filename_or_reference> is an array reference, 
+the uncompressed data will be pushed onto the array.
+
+=item An Output FileGlob
+
+If C<$output_filename_or_reference> is a string that is delimited by the
+characters "<" and ">" C<gunzip> will assume that it is an
+I<output fileglob string>. The output is the list of files that match the
+fileglob.
+
+When C<$output_filename_or_reference> is an fileglob string,
+C<$input_filename_or_reference> must also be a fileglob string. Anything
+else is an error.
+
+See L<File::GlobMapper|File::GlobMapper> for more details.
+
+=back
+
+If the C<$output_filename_or_reference> parameter is any other type,
+C<undef> will be returned.
+
+=head2 Notes
+
+When C<$input_filename_or_reference> maps to multiple compressed
+files/buffers and C<$output_filename_or_reference> is
+a single file/buffer, after uncompression C<$output_filename_or_reference> will contain a
+concatenation of all the uncompressed data from each of the input
+files/buffers.
+
+=head2 Optional Parameters
+
+Unless specified below, the optional parameters for C<gunzip>,
+C<OPTS>, are the same as those used with the OO interface defined in the
+L</"Constructor Options"> section below.
+
+=over 5
+
+=item C<< AutoClose => 0|1 >>
+
+This option applies to any input or output data streams to 
+C<gunzip> that are filehandles.
+
+If C<AutoClose> is specified, and the value is true, it will result in all
+input and/or output filehandles being closed once C<gunzip> has
+completed.
+
+This parameter defaults to 0.
+
+=item C<< BinModeOut => 0|1 >>
+
+When writing to a file or filehandle, set C<binmode> before writing to the
+file.
+
+Defaults to 0.
+
+=item C<< Append => 0|1 >>
+
+The behaviour of this option is dependent on the type of output data
+stream.
+
+=over 5
+
+=item * A Buffer
+
+If C<Append> is enabled, all uncompressed data will be append to the end of
+the output buffer. Otherwise the output buffer will be cleared before any
+uncompressed data is written to it.
+
+=item * A Filename
+
+If C<Append> is enabled, the file will be opened in append mode. Otherwise
+the contents of the file, if any, will be truncated before any uncompressed
+data is written to it.
+
+=item * A Filehandle
+
+If C<Append> is enabled, the filehandle will be positioned to the end of
+the file via a call to C<seek> before any uncompressed data is
+written to it.  Otherwise the file pointer will not be moved.
+
+=back
+
+When C<Append> is specified, and set to true, it will I<append> all uncompressed 
+data to the output data stream.
+
+So when the output is a filehandle it will carry out a seek to the eof
+before writing any uncompressed data. If the output is a filename, it will be opened for
+appending. If the output is a buffer, all uncompressed data will be
+appended to the existing buffer.
+
+Conversely when C<Append> is not specified, or it is present and is set to
+false, it will operate as follows.
+
+When the output is a filename, it will truncate the contents of the file
+before writing any uncompressed data. If the output is a filehandle
+its position will not be changed. If the output is a buffer, it will be
+wiped before any uncompressed data is output.
+
+Defaults to 0.
+
+=item C<< MultiStream => 0|1 >>
+
+If the input file/buffer contains multiple compressed data streams, this
+option will uncompress the whole lot as a single data stream.
+
+Defaults to 0.
+
+=item C<< TrailingData => $scalar >>
+
+Returns the data, if any, that is present immediately after the compressed
+data stream once uncompression is complete. 
+
+This option can be used when there is useful information immediately
+following the compressed data stream, and you don't know the length of the
+compressed data stream.
+
+If the input is a buffer, C<trailingData> will return everything from the
+end of the compressed data stream to the end of the buffer.
+
+If the input is a filehandle, C<trailingData> will return the data that is
+left in the filehandle input buffer once the end of the compressed data
+stream has been reached. You can then use the filehandle to read the rest
+of the input file. 
+
+Don't bother using C<trailingData> if the input is a filename.
+
+If you know the length of the compressed data stream before you start
+uncompressing, you can avoid having to use C<trailingData> by setting the
+C<InputLength> option.
+
+=back
+
+=head2 Examples
+
+To read the contents of the file C<file1.txt.gz> and write the
+uncompressed data to the file C<file1.txt>.
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+    my $input = "file1.txt.gz";
+    my $output = "file1.txt";
+    gunzip $input => $output
+        or die "gunzip failed: $GunzipError\n";
+
+To read from an existing Perl filehandle, C<$input>, and write the
+uncompressed data to a buffer, C<$buffer>.
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+    use IO::File ;
+
+    my $input = new IO::File "<file1.txt.gz"
+        or die "Cannot open 'file1.txt.gz': $!\n" ;
+    my $buffer ;
+    gunzip $input => \$buffer 
+        or die "gunzip failed: $GunzipError\n";
+
+To uncompress all files in the directory "/my/home" that match "*.txt.gz" and store the compressed data in the same directory
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+    gunzip '</my/home/*.txt.gz>' => '</my/home/#1.txt>'
+        or die "gunzip failed: $GunzipError\n";
+
+and if you want to compress each file one at a time, this will do the trick
+
+    use strict ;
+    use warnings ;
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+    for my $input ( glob "/my/home/*.txt.gz" )
+    {
+        my $output = $input;
+        $output =~ s/.gz// ;
+        gunzip $input => $output 
+            or die "Error compressing '$input': $GunzipError\n";
+    }
+
+=head1 OO Interface
+
+=head2 Constructor
+
+The format of the constructor for IO::Uncompress::Gunzip is shown below
+
+    my $z = new IO::Uncompress::Gunzip $input [OPTS]
+        or die "IO::Uncompress::Gunzip failed: $GunzipError\n";
+
+Returns an C<IO::Uncompress::Gunzip> object on success and undef on failure.
+The variable C<$GunzipError> will contain an error message on failure.
+
+If you are running Perl 5.005 or better the object, C<$z>, returned from
+IO::Uncompress::Gunzip can be used exactly like an L<IO::File|IO::File> filehandle.
+This means that all normal input file operations can be carried out with
+C<$z>.  For example, to read a line from a compressed file/buffer you can
+use either of these forms
+
+    $line = $z->getline();
+    $line = <$z>;
+
+The mandatory parameter C<$input> is used to determine the source of the
+compressed data. This parameter can take one of three forms.
+
+=over 5
+
+=item A filename
+
+If the C<$input> parameter is a scalar, it is assumed to be a filename. This
+file will be opened for reading and the compressed data will be read from it.
+
+=item A filehandle
+
+If the C<$input> parameter is a filehandle, the compressed data will be
+read from it.
+The string '-' can be used as an alias for standard input.
+
+=item A scalar reference 
+
+If C<$input> is a scalar reference, the compressed data will be read from
+C<$$input>.
+
+=back
+
+=head2 Constructor Options
+
+The option names defined below are case insensitive and can be optionally
+prefixed by a '-'.  So all of the following are valid
+
+    -AutoClose
+    -autoclose
+    AUTOCLOSE
+    autoclose
+
+OPTS is a combination of the following options:
+
+=over 5
+
+=item C<< AutoClose => 0|1 >>
+
+This option is only valid when the C<$input> parameter is a filehandle. If
+specified, and the value is true, it will result in the file being closed once
+either the C<close> method is called or the IO::Uncompress::Gunzip object is
+destroyed.
+
+This parameter defaults to 0.
+
+=item C<< MultiStream => 0|1 >>
+
+Allows multiple concatenated compressed streams to be treated as a single
+compressed stream. Decompression will stop once either the end of the
+file/buffer is reached, an error is encountered (premature eof, corrupt
+compressed data) or the end of a stream is not immediately followed by the
+start of another stream.
+
+This parameter defaults to 0.
+
+=item C<< Prime => $string >>
+
+This option will uncompress the contents of C<$string> before processing the
+input file/buffer.
+
+This option can be useful when the compressed data is embedded in another
+file/data structure and it is not possible to work out where the compressed
+data begins without having to read the first few bytes. If this is the
+case, the uncompression can be I<primed> with these bytes using this
+option.
+
+=item C<< Transparent => 0|1 >>
+
+If this option is set and the input file/buffer is not compressed data,
+the module will allow reading of it anyway.
+
+In addition, if the input file/buffer does contain compressed data and
+there is non-compressed data immediately following it, setting this option
+will make this module treat the whole file/buffer as a single data stream.
+
+This option defaults to 1.
+
+=item C<< BlockSize => $num >>
+
+When reading the compressed input data, IO::Uncompress::Gunzip will read it in
+blocks of C<$num> bytes.
+
+This option defaults to 4096.
+
+=item C<< InputLength => $size >>
+
+When present this option will limit the number of compressed bytes read
+from the input file/buffer to C<$size>. This option can be used in the
+situation where there is useful data directly after the compressed data
+stream and you know beforehand the exact length of the compressed data
+stream. 
+
+This option is mostly used when reading from a filehandle, in which case
+the file pointer will be left pointing to the first byte directly after the
+compressed data stream.
+
+This option defaults to off.
+
+=item C<< Append => 0|1 >>
+
+This option controls what the C<read> method does with uncompressed data.
+
+If set to 1, all uncompressed data will be appended to the output parameter
+of the C<read> method.
+
+If set to 0, the contents of the output parameter of the C<read> method
+will be overwritten by the uncompressed data.
+
+Defaults to 0.
+
+=item C<< Strict => 0|1 >>
+
+This option controls whether the extra checks defined below are used when
+carrying out the decompression. When Strict is on, the extra tests are
+carried out, when Strict is off they are not.
+
+The default for this option is off.
+
+=over 5
+
+=item 1 
+
+If the FHCRC bit is set in the gzip FLG header byte, the CRC16 bytes in the
+header must match the crc16 value of the gzip header actually read.
+
+=item 2
+
+If the gzip header contains a name field (FNAME) it consists solely of ISO
+8859-1 characters.
+
+=item 3
+
+If the gzip header contains a comment field (FCOMMENT) it consists solely
+of ISO 8859-1 characters plus line-feed.
+
+=item 4
+
+If the gzip FEXTRA header field is present it must conform to the sub-field
+structure as defined in RFC 1952.
+
+=item 5
+
+The CRC32 and ISIZE trailer fields must be present.
+
+=item 6
+
+The value of the CRC32 field read must match the crc32 value of the
+uncompressed data actually contained in the gzip file.
+
+=item 7
+
+The value of the ISIZE fields read must match the length of the
+uncompressed data actually read from the file.
+
+=back
+
+=item C<< ParseExtra => 0|1 >>
+If the gzip FEXTRA header field is present and this option is set, it will
+force the module to check that it conforms to the sub-field structure as
+defined in RFC 1952.
+
+If the C<Strict> is on it will automatically enable this option.
+
+Defaults to 0.
+
+=back
+
+=head2 Examples
+
+TODO
+
+=head1 Methods 
+
+=head2 read
+
+Usage is
+
+    $status = $z->read($buffer)
+
+Reads a block of compressed data (the size of the compressed block is
+determined by the C<Buffer> option in the constructor), uncompresses it and
+writes any uncompressed data into C<$buffer>. If the C<Append> parameter is
+set in the constructor, the uncompressed data will be appended to the
+C<$buffer> parameter. Otherwise C<$buffer> will be overwritten.
+
+Returns the number of uncompressed bytes written to C<$buffer>, zero if eof
+or a negative number on error.
+
+=head2 read
+
+Usage is
+
+    $status = $z->read($buffer, $length)
+    $status = $z->read($buffer, $length, $offset)
+
+    $status = read($z, $buffer, $length)
+    $status = read($z, $buffer, $length, $offset)
+
+Attempt to read C<$length> bytes of uncompressed data into C<$buffer>.
+
+The main difference between this form of the C<read> method and the
+previous one, is that this one will attempt to return I<exactly> C<$length>
+bytes. The only circumstances that this function will not is if end-of-file
+or an IO error is encountered.
+
+Returns the number of uncompressed bytes written to C<$buffer>, zero if eof
+or a negative number on error.
+
+=head2 getline
+
+Usage is
+
+    $line = $z->getline()
+    $line = <$z>
+
+Reads a single line. 
+
+This method fully supports the use of the variable C<$/> (or
+C<$INPUT_RECORD_SEPARATOR> or C<$RS> when C<English> is in use) to
+determine what constitutes an end of line. Paragraph mode, record mode and
+file slurp mode are all supported. 
+
+=head2 getc
+
+Usage is 
+
+    $char = $z->getc()
+
+Read a single character.
+
+=head2 ungetc
+
+Usage is
+
+    $char = $z->ungetc($string)
+
+=head2 inflateSync
+
+Usage is
+
+    $status = $z->inflateSync()
+
+TODO
+
+=head2 getHeaderInfo
+
+Usage is
+
+    $hdr  = $z->getHeaderInfo();
+    @hdrs = $z->getHeaderInfo();
+
+This method returns either a hash reference (in scalar context) or a list
+or hash references (in array context) that contains information about each
+of the header fields in the compressed data stream(s).
+
+=over 5
+
+=item Name
+
+The contents of the Name header field, if present. If no name is
+present, the value will be undef. Note this is different from a zero length
+name, which will return an empty string.
+
+=item Comment
+
+The contents of the Comment header field, if present. If no comment is
+present, the value will be undef. Note this is different from a zero length
+comment, which will return an empty string.
+
+=back
+
+=head2 tell
+
+Usage is
+
+    $z->tell()
+    tell $z
+
+Returns the uncompressed file offset.
+
+=head2 eof
+
+Usage is
+
+    $z->eof();
+    eof($z);
+
+Returns true if the end of the compressed input stream has been reached.
+
+=head2 seek
+
+    $z->seek($position, $whence);
+    seek($z, $position, $whence);
+
+Provides a sub-set of the C<seek> functionality, with the restriction
+that it is only legal to seek forward in the input file/buffer.
+It is a fatal error to attempt to seek backward.
+
+Note that the implementation of C<seek> in this module does not provide
+true random access to a compressed file/buffer. It  works by uncompressing
+data from the current offset in the file/buffer until it reaches the
+uncompressed offset specified in the parameters to C<seek>. For very small
+files this may be acceptable behaviour. For large files it may cause an
+unacceptable delay.
+
+The C<$whence> parameter takes one the usual values, namely SEEK_SET,
+SEEK_CUR or SEEK_END.
+
+Returns 1 on success, 0 on failure.
+
+=head2 binmode
+
+Usage is
+
+    $z->binmode
+    binmode $z ;
+
+This is a noop provided for completeness.
+
+=head2 opened
+
+    $z->opened()
+
+Returns true if the object currently refers to a opened file/buffer. 
+
+=head2 autoflush
+
+    my $prev = $z->autoflush()
+    my $prev = $z->autoflush(EXPR)
+
+If the C<$z> object is associated with a file or a filehandle, this method
+returns the current autoflush setting for the underlying filehandle. If
+C<EXPR> is present, and is non-zero, it will enable flushing after every
+write/print operation.
+
+If C<$z> is associated with a buffer, this method has no effect and always
+returns C<undef>.
+
+B<Note> that the special variable C<$|> B<cannot> be used to set or
+retrieve the autoflush setting.
+
+=head2 input_line_number
+
+    $z->input_line_number()
+    $z->input_line_number(EXPR)
+
+Returns the current uncompressed line number. If C<EXPR> is present it has
+the effect of setting the line number. Note that setting the line number
+does not change the current position within the file/buffer being read.
+
+The contents of C<$/> are used to determine what constitutes a line
+terminator.
+
+=head2 fileno
+
+    $z->fileno()
+    fileno($z)
+
+If the C<$z> object is associated with a file or a filehandle, C<fileno>
+will return the underlying file descriptor. Once the C<close> method is
+called C<fileno> will return C<undef>.
+
+If the C<$z> object is associated with a buffer, this method will return
+C<undef>.
+
+=head2 close
+
+    $z->close() ;
+    close $z ;
+
+Closes the output file/buffer. 
+
+For most versions of Perl this method will be automatically invoked if
+the IO::Uncompress::Gunzip object is destroyed (either explicitly or by the
+variable with the reference to the object going out of scope). The
+exceptions are Perl versions 5.005 through 5.00504 and 5.8.0. In
+these cases, the C<close> method will be called automatically, but
+not until global destruction of all live objects when the program is
+terminating.
+
+Therefore, if you want your scripts to be able to run on all versions
+of Perl, you should call C<close> explicitly and not rely on automatic
+closing.
+
+Returns true on success, otherwise 0.
+
+If the C<AutoClose> option has been enabled when the IO::Uncompress::Gunzip
+object was created, and the object is associated with a file, the
+underlying file will also be closed.
+
+=head2 nextStream
+
+Usage is
+
+    my $status = $z->nextStream();
+
+Skips to the next compressed data stream in the input file/buffer. If a new
+compressed data stream is found, the eof marker will be cleared and C<$.>
+will be reset to 0.
+
+Returns 1 if a new stream was found, 0 if none was found, and -1 if an
+error was encountered.
+
+=head2 trailingData
+
+Usage is
+
+    my $data = $z->trailingData();
+
+Returns the data, if any, that is present immediately after the compressed
+data stream once uncompression is complete. It only makes sense to call
+this method once the end of the compressed data stream has been
+encountered.
+
+This option can be used when there is useful information immediately
+following the compressed data stream, and you don't know the length of the
+compressed data stream.
+
+If the input is a buffer, C<trailingData> will return everything from the
+end of the compressed data stream to the end of the buffer.
+
+If the input is a filehandle, C<trailingData> will return the data that is
+left in the filehandle input buffer once the end of the compressed data
+stream has been reached. You can then use the filehandle to read the rest
+of the input file. 
+
+Don't bother using C<trailingData> if the input is a filename.
+
+If you know the length of the compressed data stream before you start
+uncompressing, you can avoid having to use C<trailingData> by setting the
+C<InputLength> option in the constructor.
+
+=head1 Importing 
+
+No symbolic constants are required by this IO::Uncompress::Gunzip at present. 
+
+=over 5
+
+=item :all
+
+Imports C<gunzip> and C<$GunzipError>.
+Same as doing this
+
+    use IO::Uncompress::Gunzip qw(gunzip $GunzipError) ;
+
+=back
+
+=head1 EXAMPLES
+
+=head2 Working with Net::FTP
+
+See L<IO::Compress::FAQ|IO::Compress::FAQ/"Compressed files and Net::FTP">
+
+=head1 SEE ALSO
+
+L<Compress::Zlib>, L<IO::Compress::Gzip>, L<IO::Compress::Deflate>, L<IO::Uncompress::Inflate>, L<IO::Compress::RawDeflate>, L<IO::Uncompress::RawInflate>, L<IO::Compress::Bzip2>, L<IO::Uncompress::Bunzip2>, L<IO::Compress::Lzma>, L<IO::Uncompress::UnLzma>, L<IO::Compress::Xz>, L<IO::Uncompress::UnXz>, L<IO::Compress::Lzop>, L<IO::Uncompress::UnLzop>, L<IO::Compress::Lzf>, L<IO::Uncompress::UnLzf>, L<IO::Uncompress::AnyInflate>, L<IO::Uncompress::AnyUncompress>
+
+L<IO::Compress::FAQ|IO::Compress::FAQ>
+
+L<File::GlobMapper|File::GlobMapper>, L<Archive::Zip|Archive::Zip>,
+L<Archive::Tar|Archive::Tar>,
+L<IO::Zlib|IO::Zlib>
+
+For RFC 1950, 1951 and 1952 see 
+F<http://www.faqs.org/rfcs/rfc1950.html>,
+F<http://www.faqs.org/rfcs/rfc1951.html> and
+F<http://www.faqs.org/rfcs/rfc1952.html>
+
+The I<zlib> compression library was written by Jean-loup Gailly
+F<gzip@prep.ai.mit.edu> and Mark Adler F<madler@alumni.caltech.edu>.
+
+The primary site for the I<zlib> compression library is
+F<http://www.zlib.org>.
+
+The primary site for gzip is F<http://www.gzip.org>.
+
+=head1 AUTHOR
+
+This module was written by Paul Marquess, F<pmqs@cpan.org>. 
+
+=head1 MODIFICATION HISTORY
+
+See the Changes file.
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright (c) 2005-2014 Paul Marquess. All rights reserved.
+
+This program is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  # IO::Zlib.pm
+#
+# Copyright (c) 1998-2004 Tom Hughes <tom@compton.nu>.
+# All rights reserved. This program is free software; you can redistribute
+# it and/or modify it under the same terms as Perl itself.
+
+package IO::Zlib;
+
+$VERSION = "1.10";
+
+=head1 NAME
+
+IO::Zlib - IO:: style interface to L<Compress::Zlib>
+
+=head1 SYNOPSIS
+
+With any version of Perl 5 you can use the basic OO interface:
+
+    use IO::Zlib;
+
+    $fh = new IO::Zlib;
+    if ($fh->open("file.gz", "rb")) {
+        print <$fh>;
+        $fh->close;
+    }
+
+    $fh = IO::Zlib->new("file.gz", "wb9");
+    if (defined $fh) {
+        print $fh "bar\n";
+        $fh->close;
+    }
+
+    $fh = IO::Zlib->new("file.gz", "rb");
+    if (defined $fh) {
+        print <$fh>;
+        undef $fh;       # automatically closes the file
+    }
+
+With Perl 5.004 you can also use the TIEHANDLE interface to access
+compressed files just like ordinary files:
+
+    use IO::Zlib;
+
+    tie *FILE, 'IO::Zlib', "file.gz", "wb";
+    print FILE "line 1\nline2\n";
+
+    tie *FILE, 'IO::Zlib', "file.gz", "rb";
+    while (<FILE>) { print "LINE: ", $_ };
+
+=head1 DESCRIPTION
+
+C<IO::Zlib> provides an IO:: style interface to L<Compress::Zlib> and
+hence to gzip/zlib compressed files. It provides many of the same methods
+as the L<IO::Handle> interface.
+
+Starting from IO::Zlib version 1.02, IO::Zlib can also use an
+external F<gzip> command.  The default behaviour is to try to use
+an external F<gzip> if no C<Compress::Zlib> can be loaded, unless
+explicitly disabled by
+
+    use IO::Zlib qw(:gzip_external 0);
+
+If explicitly enabled by
+
+    use IO::Zlib qw(:gzip_external 1);
+
+then the external F<gzip> is used B<instead> of C<Compress::Zlib>.
+
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item new ( [ARGS] )
+
+Creates an C<IO::Zlib> object. If it receives any parameters, they are
+passed to the method C<open>; if the open fails, the object is destroyed.
+Otherwise, it is returned to the caller.
+
+=back
+
+=head1 OBJECT METHODS
+
+=over 4
+
+=item open ( FILENAME, MODE )
+
+C<open> takes two arguments. The first is the name of the file to open
+and the second is the open mode. The mode can be anything acceptable to
+L<Compress::Zlib> and by extension anything acceptable to I<zlib> (that
+basically means POSIX fopen() style mode strings plus an optional number
+to indicate the compression level).
+
+=item opened
+
+Returns true if the object currently refers to a opened file.
+
+=item close
+
+Close the file associated with the object and disassociate
+the file from the handle.
+Done automatically on destroy.
+
+=item getc
+
+Return the next character from the file, or undef if none remain.
+
+=item getline
+
+Return the next line from the file, or undef on end of string.
+Can safely be called in an array context.
+Currently ignores $/ ($INPUT_RECORD_SEPARATOR or $RS when L<English>
+is in use) and treats lines as delimited by "\n".
+
+=item getlines
+
+Get all remaining lines from the file.
+It will croak() if accidentally called in a scalar context.
+
+=item print ( ARGS... )
+
+Print ARGS to the  file.
+
+=item read ( BUF, NBYTES, [OFFSET] )
+
+Read some bytes from the file.
+Returns the number of bytes actually read, 0 on end-of-file, undef on error.
+
+=item eof
+
+Returns true if the handle is currently positioned at end of file?
+
+=item seek ( OFFSET, WHENCE )
+
+Seek to a given position in the stream.
+Not yet supported.
+
+=item tell
+
+Return the current position in the stream, as a numeric offset.
+Not yet supported.
+
+=item setpos ( POS )
+
+Set the current position, using the opaque value returned by C<getpos()>.
+Not yet supported.
+
+=item getpos ( POS )
+
+Return the current position in the string, as an opaque object.
+Not yet supported.
+
+=back
+
+=head1 USING THE EXTERNAL GZIP
+
+If the external F<gzip> is used, the following C<open>s are used:
+
+    open(FH, "gzip -dc $filename |")  # for read opens
+    open(FH, " | gzip > $filename")   # for write opens
+
+You can modify the 'commands' for example to hardwire
+an absolute path by e.g.
+
+    use IO::Zlib ':gzip_read_open'  => '/some/where/gunzip -c %s |';
+    use IO::Zlib ':gzip_write_open' => '| /some/where/gzip.exe > %s';
+
+The C<%s> is expanded to be the filename (C<sprintf> is used, so be
+careful to escape any other C<%> signs).  The 'commands' are checked
+for sanity - they must contain the C<%s>, and the read open must end
+with the pipe sign, and the write open must begin with the pipe sign.
+
+=head1 CLASS METHODS
+
+=over 4
+
+=item has_Compress_Zlib
+
+Returns true if C<Compress::Zlib> is available.  Note that this does
+not mean that C<Compress::Zlib> is being used: see L</gzip_external>
+and L<gzip_used>.
+
+=item gzip_external
+
+Undef if an external F<gzip> B<can> be used if C<Compress::Zlib> is
+not available (see L</has_Compress_Zlib>), true if an external F<gzip>
+is explicitly used, false if an external F<gzip> must not be used.
+See L</gzip_used>.
+
+=item gzip_used
+
+True if an external F<gzip> is being used, false if not.
+
+=item gzip_read_open
+
+Return the 'command' being used for opening a file for reading using an
+external F<gzip>.
+
+=item gzip_write_open
+
+Return the 'command' being used for opening a file for writing using an
+external F<gzip>.
+
+=back
+
+=head1 DIAGNOSTICS
+
+=over 4
+
+=item IO::Zlib::getlines: must be called in list context
+
+If you want read lines, you must read in list context.
+
+=item IO::Zlib::gzopen_external: mode '...' is illegal
+
+Use only modes 'rb' or 'wb' or /wb[1-9]/.
+
+=item IO::Zlib::import: '...' is illegal
+
+The known import symbols are the C<:gzip_external>, C<:gzip_read_open>,
+and C<:gzip_write_open>.  Anything else is not recognized.
+
+=item IO::Zlib::import: ':gzip_external' requires an argument
+
+The C<:gzip_external> requires one boolean argument.
+
+=item IO::Zlib::import: 'gzip_read_open' requires an argument
+
+The C<:gzip_external> requires one string argument.
+
+=item IO::Zlib::import: 'gzip_read' '...' is illegal
+
+The C<:gzip_read_open> argument must end with the pipe sign (|)
+and have the C<%s> for the filename.  See L</"USING THE EXTERNAL GZIP">.
+
+=item IO::Zlib::import: 'gzip_write_open' requires an argument
+
+The C<:gzip_external> requires one string argument.
+
+=item IO::Zlib::import: 'gzip_write_open' '...' is illegal
+
+The C<:gzip_write_open> argument must begin with the pipe sign (|)
+and have the C<%s> for the filename.  An output redirect (>) is also
+often a good idea, depending on your operating system shell syntax.
+See L</"USING THE EXTERNAL GZIP">.
+
+=item IO::Zlib::import: no Compress::Zlib and no external gzip
+
+Given that we failed to load C<Compress::Zlib> and that the use of
+ an external F<gzip> was disabled, IO::Zlib has not much chance of working.
+
+=item IO::Zlib::open: needs a filename
+
+No filename, no open.
+
+=item IO::Zlib::READ: NBYTES must be specified
+
+We must know how much to read.
+
+=item IO::Zlib::WRITE: too long LENGTH
+
+The LENGTH must be less than or equal to the buffer size.
+
+=back
+
+=head1 SEE ALSO
+
+L<perlfunc>,
+L<perlop/"I/O Operators">,
+L<IO::Handle>,
+L<Compress::Zlib>
+
+=head1 HISTORY
+
+Created by Tom Hughes E<lt>F<tom@compton.nu>E<gt>.
+
+Support for external gzip added by Jarkko Hietaniemi E<lt>F<jhi@iki.fi>E<gt>.
+
+=head1 COPYRIGHT
+
+Copyright (c) 1998-2004 Tom Hughes E<lt>F<tom@compton.nu>E<gt>.
+All rights reserved. This program is free software; you can redistribute
+it and/or modify it under the same terms as Perl itself.
+
+=cut
+
+require 5.006;
+
+use strict;
+use vars qw($VERSION $AUTOLOAD @ISA);
+
+use Carp;
+use Fcntl qw(SEEK_SET);
+
+my $has_Compress_Zlib;
+my $aliased;
+
+sub has_Compress_Zlib {
+    $has_Compress_Zlib;
+}
+
+BEGIN {
+    eval { require Compress::Zlib };
+    $has_Compress_Zlib = $@ || $Compress::Zlib::VERSION < 2.000 ? 0 : 1;
+}
+
+use Symbol;
+use Tie::Handle;
+
+# These might use some $^O logic.
+my $gzip_read_open   = "gzip -dc %s |";
+my $gzip_write_open  = "| gzip > %s";
+
+my $gzip_external;
+my $gzip_used;
+
+sub gzip_read_open {
+    $gzip_read_open;
+}
+
+sub gzip_write_open {
+    $gzip_write_open;
+}
+
+sub gzip_external {
+    $gzip_external;
+}
+
+sub gzip_used {
+    $gzip_used;
+}
+
+sub can_gunzip {
+    $has_Compress_Zlib || $gzip_external;
+}
+
+sub _import {
+    my $import = shift;
+    while (@_) {
+	if ($_[0] eq ':gzip_external') {
+	    shift;
+	    if (@_) {
+		$gzip_external = shift;
+	    } else {
+		croak "$import: ':gzip_external' requires an argument";
+	    }
+	}
+	elsif ($_[0] eq ':gzip_read_open') {
+	    shift;
+	    if (@_) {
+		$gzip_read_open = shift;
+		croak "$import: ':gzip_read_open' '$gzip_read_open' is illegal"
+		    unless $gzip_read_open =~ /^.+%s.+\|\s*$/;
+	    } else {
+		croak "$import: ':gzip_read_open' requires an argument";
+	    }
+	}
+	elsif ($_[0] eq ':gzip_write_open') {
+	    shift;
+	    if (@_) {
+		$gzip_write_open = shift;
+		croak "$import: ':gzip_write_open' '$gzip_read_open' is illegal"
+		    unless $gzip_write_open =~ /^\s*\|.+%s.*$/;
+	    } else {
+		croak "$import: ':gzip_write_open' requires an argument";
+	    }
+	}
+	else {
+	    last;
+	}
+    }
+    return @_;
+}
+
+sub _alias {
+    my $import = shift;
+    if ((!$has_Compress_Zlib && !defined $gzip_external) || $gzip_external) {
+	# The undef *gzopen is really needed only during
+	# testing where we eval several 'use IO::Zlib's.
+	undef *gzopen;
+        *gzopen                 = \&gzopen_external;
+        *IO::Handle::gzread     = \&gzread_external;
+        *IO::Handle::gzwrite    = \&gzwrite_external;
+        *IO::Handle::gzreadline = \&gzreadline_external;
+        *IO::Handle::gzeof      = \&gzeof_external;
+        *IO::Handle::gzclose    = \&gzclose_external;
+	$gzip_used = 1;
+    } else {
+	croak "$import: no Compress::Zlib and no external gzip"
+	    unless $has_Compress_Zlib;
+        *gzopen     = \&Compress::Zlib::gzopen;
+        *gzread     = \&Compress::Zlib::gzread;
+        *gzwrite    = \&Compress::Zlib::gzwrite;
+        *gzreadline = \&Compress::Zlib::gzreadline;
+        *gzeof      = \&Compress::Zlib::gzeof;
+    }
+    $aliased = 1;
+}
+
+sub import {
+    shift;
+    my $import = "IO::Zlib::import";
+    if (@_) {
+	if (_import($import, @_)) {
+	    croak "$import: '@_' is illegal";
+	}
+    }
+    _alias($import);
+}
+
+@ISA = qw(Tie::Handle);
+
+sub TIEHANDLE
+{
+    my $class = shift;
+    my @args = @_;
+
+    my $self = bless {}, $class;
+
+    return @args ? $self->OPEN(@args) : $self;
+}
+
+sub DESTROY
+{
+}
+
+sub OPEN
+{
+    my $self = shift;
+    my $filename = shift;
+    my $mode = shift;
+
+    croak "IO::Zlib::open: needs a filename" unless defined($filename);
+
+    $self->{'file'} = gzopen($filename,$mode);
+
+    return defined($self->{'file'}) ? $self : undef;
+}
+
+sub CLOSE
+{
+    my $self = shift;
+
+    return undef unless defined($self->{'file'});
+
+    my $status = $self->{'file'}->gzclose();
+
+    delete $self->{'file'};
+
+    return ($status == 0) ? 1 : undef;
+}
+
+sub READ
+{
+    my $self = shift;
+    my $bufref = \$_[0];
+    my $nbytes = $_[1];
+    my $offset = $_[2] || 0;
+
+    croak "IO::Zlib::READ: NBYTES must be specified" unless defined($nbytes);
+
+    $$bufref = "" unless defined($$bufref);
+
+    my $bytesread = $self->{'file'}->gzread(substr($$bufref,$offset),$nbytes);
+
+    return undef if $bytesread < 0;
+
+    return $bytesread;
+}
+
+sub READLINE
+{
+    my $self = shift;
+
+    my $line;
+
+    return () if $self->{'file'}->gzreadline($line) <= 0;
+
+    return $line unless wantarray;
+
+    my @lines = $line;
+
+    while ($self->{'file'}->gzreadline($line) > 0)
+    {
+        push @lines, $line;
+    }
+
+    return @lines;
+}
+
+sub WRITE
+{
+    my $self = shift;
+    my $buf = shift;
+    my $length = shift;
+    my $offset = shift;
+
+    croak "IO::Zlib::WRITE: too long LENGTH" unless $offset + $length <= length($buf);
+
+    return $self->{'file'}->gzwrite(substr($buf,$offset,$length));
+}
+
+sub EOF
+{
+    my $self = shift;
+
+    return $self->{'file'}->gzeof();
+}
+
+sub FILENO
+{
+    return undef;
+}
+
+sub new
+{
+    my $class = shift;
+    my @args = @_;
+
+    _alias("new", @_) unless $aliased; # Some call new IO::Zlib directly...
+
+    my $self = gensym();
+
+    tie *{$self}, $class, @args;
+
+    return tied(${$self}) ? bless $self, $class : undef;
+}
+
+sub getline
+{
+    my $self = shift;
+
+    return scalar tied(*{$self})->READLINE();
+}
+
+sub getlines
+{
+    my $self = shift;
+
+    croak "IO::Zlib::getlines: must be called in list context"
+	unless wantarray;
+
+    return tied(*{$self})->READLINE();
+}
+
+sub opened
+{
+    my $self = shift;
+
+    return defined tied(*{$self})->{'file'};
+}
+
+sub AUTOLOAD
+{
+    my $self = shift;
+
+    $AUTOLOAD =~ s/.*:://;
+    $AUTOLOAD =~ tr/a-z/A-Z/;
+
+    return tied(*{$self})->$AUTOLOAD(@_);
+}
+
+sub gzopen_external {
+    my ($filename, $mode) = @_;
+    require IO::Handle;
+    my $fh = IO::Handle->new();
+    if ($mode =~ /r/) {
+	# Because someone will try to read ungzipped files
+	# with this we peek and verify the signature.  Yes,
+	# this means that we open the file twice (if it is
+	# gzipped).
+	# Plenty of race conditions exist in this code, but
+	# the alternative would be to capture the stderr of
+	# gzip and parse it, which would be a portability nightmare.
+	if (-e $filename && open($fh, $filename)) {
+	    binmode $fh;
+	    my $sig;
+	    my $rdb = read($fh, $sig, 2);
+	    if ($rdb == 2 && $sig eq "\x1F\x8B") {
+		my $ropen = sprintf $gzip_read_open, $filename;
+		if (open($fh, $ropen)) {
+		    binmode $fh;
+		    return $fh;
+		} else {
+		    return undef;
+		}
+	    }
+	    seek($fh, 0, SEEK_SET) or
+		die "IO::Zlib: open('$filename', 'r'): seek: $!";
+	    return $fh;
+	} else {
+	    return undef;
+	}
+    } elsif ($mode =~ /w/) {
+	my $level = '';
+	$level = "-$1" if $mode =~ /([1-9])/;
+	# To maximize portability we would need to open
+	# two filehandles here, one for "| gzip $level"
+	# and another for "> $filename", and then when
+	# writing copy bytes from the first to the second.
+	# We are using IO::Handle objects for now, however,
+	# and they can only contain one stream at a time.
+	my $wopen = sprintf $gzip_write_open, $filename;
+	if (open($fh, $wopen)) {
+	    $fh->autoflush(1);
+	    binmode $fh;
+	    return $fh;
+	} else {
+	    return undef;
+	}
+    } else {
+	croak "IO::Zlib::gzopen_external: mode '$mode' is illegal";
+    }
+    return undef;
+}
+
+sub gzread_external {
+    # Use read() instead of syswrite() because people may
+    # mix reads and readlines, and we don't want to mess
+    # the stdio buffering.  See also gzreadline_external()
+    # and gzwrite_external().
+    my $nread = read($_[0], $_[1], @_ == 3 ? $_[2] : 4096);
+    defined $nread ? $nread : -1;
+}
+
+sub gzwrite_external {
+    # Using syswrite() is okay (cf. gzread_external())
+    # since the bytes leave this process and buffering
+    # is therefore not an issue.
+    my $nwrote = syswrite($_[0], $_[1]);
+    defined $nwrote ? $nwrote : -1;
+}
+
+sub gzreadline_external {
+    # See the comment in gzread_external().
+    $_[1] = readline($_[0]);
+    return defined $_[1] ? length($_[1]) : -1;
+}
+
+sub gzeof_external {
+    return eof($_[0]);
+}
+
+sub gzclose_external {
+    close($_[0]);
+    # I am not entirely certain why this is needed but it seems
+    # the above close() always fails (as if the stream would have
+    # been already closed - something to do with using external
+    # processes via pipes?)
+    return 0;
+}
+
+1;
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         #  You may distribute under the terms of either the GNU General Public License
+#  or the Artistic License (the same terms as Perl itself)
+#
+#  (C) Paul Evans, 2010-2015 -- leonerd@leonerd.org.uk
+
+package IO::Socket::IP;
+# $VERSION needs to be set before  use base 'IO::Socket'
+#  - https://rt.cpan.org/Ticket/Display.html?id=92107
+BEGIN {
+   $VERSION = '0.37';
+}
+
+use strict;
+use warnings;
+use base qw( IO::Socket );
+
+use Carp;
+
+use Socket 1.97 qw(
+   getaddrinfo getnameinfo
+   sockaddr_family
+   AF_INET
+   AI_PASSIVE
+   IPPROTO_TCP IPPROTO_UDP
+   IPPROTO_IPV6 IPV6_V6ONLY
+   NI_DGRAM NI_NUMERICHOST NI_NUMERICSERV NIx_NOHOST NIx_NOSERV
+   SO_REUSEADDR SO_REUSEPORT SO_BROADCAST SO_ERROR
+   SOCK_DGRAM SOCK_STREAM
+   SOL_SOCKET
+);
+my $AF_INET6 = eval { Socket::AF_INET6() }; # may not be defined
+my $AI_ADDRCONFIG = eval { Socket::AI_ADDRCONFIG() } || 0;
+use POSIX qw( dup2 );
+use Errno qw( EINVAL EINPROGRESS EISCONN ENOTCONN ETIMEDOUT EWOULDBLOCK );
+
+use constant HAVE_MSWIN32 => ( $^O eq "MSWin32" );
+
+# At least one OS (Android) is known not to have getprotobyname()
+use constant HAVE_GETPROTOBYNAME => defined eval { getprotobyname( "tcp" ) };
+
+my $IPv6_re = do {
+   # translation of RFC 3986 3.2.2 ABNF to re
+   my $IPv4address = do {
+      my $dec_octet = q<(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])>;
+      qq<$dec_octet(?: \\. $dec_octet){3}>;
+   };
+   my $IPv6address = do {
+      my $h16  = qq<[0-9A-Fa-f]{1,4}>;
+      my $ls32 = qq<(?: $h16 : $h16 | $IPv4address)>;
+      qq<(?:
+                                            (?: $h16 : ){6} $ls32
+         |                               :: (?: $h16 : ){5} $ls32
+         | (?:                   $h16 )? :: (?: $h16 : ){4} $ls32
+         | (?: (?: $h16 : ){0,1} $h16 )? :: (?: $h16 : ){3} $ls32
+         | (?: (?: $h16 : ){0,2} $h16 )? :: (?: $h16 : ){2} $ls32
+         | (?: (?: $h16 : ){0,3} $h16 )? ::     $h16 :      $ls32
+         | (?: (?: $h16 : ){0,4} $h16 )? ::                 $ls32
+         | (?: (?: $h16 : ){0,5} $h16 )? ::                 $h16
+         | (?: (?: $h16 : ){0,6} $h16 )? ::
+      )>
+   };
+   qr<$IPv6address>xo;
+};
+
+sub import
+{
+   my $pkg = shift;
+   my @symbols;
+
+   foreach ( @_ ) {
+      if( $_ eq "-register" ) {
+         IO::Socket::IP::_ForINET->register_domain( AF_INET );
+         IO::Socket::IP::_ForINET6->register_domain( $AF_INET6 ) if defined $AF_INET6;
+      }
+      else {
+         push @symbols, $_;
+      }
+   }
+
+   @_ = ( $pkg, @symbols );
+   goto &IO::Socket::import;
+}
+
+# Convenient capability test function
+{
+   my $can_disable_v6only;
+   sub CAN_DISABLE_V6ONLY
+   {
+      return $can_disable_v6only if defined $can_disable_v6only;
+
+      socket my $testsock, Socket::PF_INET6(), SOCK_STREAM, 0 or
+         die "Cannot socket(PF_INET6) - $!";
+
+      if( setsockopt $testsock, IPPROTO_IPV6, IPV6_V6ONLY, 0 ) {
+         return $can_disable_v6only = 1;
+      }
+      elsif( $! == EINVAL ) {
+         return $can_disable_v6only = 0;
+      }
+      else {
+         die "Cannot setsockopt() - $!";
+      }
+   }
+}
+
+sub new
+{
+   my $class = shift;
+   my %arg = (@_ == 1) ? (PeerHost => $_[0]) : @_;
+   return $class->SUPER::new(%arg);
+}
+
+# IO::Socket may call this one; neaten up the arguments from IO::Socket::INET
+# before calling our real _configure method
+sub configure
+{
+   my $self = shift;
+   my ( $arg ) = @_;
+
+   $arg->{PeerHost} = delete $arg->{PeerAddr}
+      if exists $arg->{PeerAddr} && !exists $arg->{PeerHost};
+
+   $arg->{PeerService} = delete $arg->{PeerPort}
+      if exists $arg->{PeerPort} && !exists $arg->{PeerService};
+
+   $arg->{LocalHost} = delete $arg->{LocalAddr}
+      if exists $arg->{LocalAddr} && !exists $arg->{LocalHost};
+
+   $arg->{LocalService} = delete $arg->{LocalPort}
+      if exists $arg->{LocalPort} && !exists $arg->{LocalService};
+
+   for my $type (qw(Peer Local)) {
+      my $host    = $type . 'Host';
+      my $service = $type . 'Service';
+
+      if( defined $arg->{$host} ) {
+         ( $arg->{$host}, my $s ) = $self->split_addr( $arg->{$host} );
+         # IO::Socket::INET compat - *Host parsed port always takes precedence
+         $arg->{$service} = $s if defined $s;
+      }
+   }
+
+   $self->_io_socket_ip__configure( $arg );
+}
+
+# Avoid simply calling it _configure, as some subclasses of IO::Socket::INET on CPAN already take that
+sub _io_socket_ip__configure
+{
+   my $self = shift;
+   my ( $arg ) = @_;
+
+   my %hints;
+   my @localinfos;
+   my @peerinfos;
+
+   my $listenqueue = $arg->{Listen};
+   if( defined $listenqueue and
+       ( defined $arg->{PeerHost} || defined $arg->{PeerService} || defined $arg->{PeerAddrInfo} ) ) {
+      croak "Cannot Listen with a peer address";
+   }
+
+   if( defined $arg->{GetAddrInfoFlags} ) {
+      $hints{flags} = $arg->{GetAddrInfoFlags};
+   }
+   else {
+      $hints{flags} = $AI_ADDRCONFIG;
+   }
+
+   if( defined( my $family = $arg->{Family} ) ) {
+      $hints{family} = $family;
+   }
+
+   if( defined( my $type = $arg->{Type} ) ) {
+      $hints{socktype} = $type;
+   }
+
+   if( defined( my $proto = $arg->{Proto} ) ) {
+      unless( $proto =~ m/^\d+$/ ) {
+         my $protonum = HAVE_GETPROTOBYNAME
+            ? getprotobyname( $proto )
+            : eval { Socket->${\"IPPROTO_\U$proto"}() };
+         defined $protonum or croak "Unrecognised protocol $proto";
+         $proto = $protonum;
+      }
+
+      $hints{protocol} = $proto;
+   }
+
+   # To maintain compatibility with IO::Socket::INET, imply a default of
+   # SOCK_STREAM + IPPROTO_TCP if neither hint is given
+   if( !defined $hints{socktype} and !defined $hints{protocol} ) {
+      $hints{socktype} = SOCK_STREAM;
+      $hints{protocol} = IPPROTO_TCP;
+   }
+
+   # Some OSes (NetBSD) don't seem to like just a protocol hint without a
+   # socktype hint as well. We'll set a couple of common ones
+   if( !defined $hints{socktype} and defined $hints{protocol} ) {
+      $hints{socktype} = SOCK_STREAM if $hints{protocol} == IPPROTO_TCP;
+      $hints{socktype} = SOCK_DGRAM  if $hints{protocol} == IPPROTO_UDP;
+   }
+
+   if( my $info = $arg->{LocalAddrInfo} ) {
+      ref $info eq "ARRAY" or croak "Expected 'LocalAddrInfo' to be an ARRAY ref";
+      @localinfos = @$info;
+   }
+   elsif( defined $arg->{LocalHost} or
+          defined $arg->{LocalService} or
+          HAVE_MSWIN32 and $arg->{Listen} ) {
+      # Either may be undef
+      my $host = $arg->{LocalHost};
+      my $service = $arg->{LocalService};
+
+      unless ( defined $host or defined $service ) {
+         $service = 0;
+      }
+
+      local $1; # Placate a taint-related bug; [perl #67962]
+      defined $service and $service =~ s/\((\d+)\)$// and
+         my $fallback_port = $1;
+
+      my %localhints = %hints;
+      $localhints{flags} |= AI_PASSIVE;
+      ( my $err, @localinfos ) = getaddrinfo( $host, $service, \%localhints );
+
+      if( $err and defined $fallback_port ) {
+         ( $err, @localinfos ) = getaddrinfo( $host, $fallback_port, \%localhints );
+      }
+
+      if( $err ) {
+         $@ = "$err";
+         $! = EINVAL;
+         return;
+      }
+   }
+
+   if( my $info = $arg->{PeerAddrInfo} ) {
+      ref $info eq "ARRAY" or croak "Expected 'PeerAddrInfo' to be an ARRAY ref";
+      @peerinfos = @$info;
+   }
+   elsif( defined $arg->{PeerHost} or defined $arg->{PeerService} ) {
+      defined( my $host = $arg->{PeerHost} ) or
+         croak "Expected 'PeerHost'";
+      defined( my $service = $arg->{PeerService} ) or
+         croak "Expected 'PeerService'";
+
+      local $1; # Placate a taint-related bug; [perl #67962]
+      defined $service and $service =~ s/\((\d+)\)$// and
+         my $fallback_port = $1;
+
+      ( my $err, @peerinfos ) = getaddrinfo( $host, $service, \%hints );
+
+      if( $err and defined $fallback_port ) {
+         ( $err, @peerinfos ) = getaddrinfo( $host, $fallback_port, \%hints );
+      }
+
+      if( $err ) {
+         $@ = "$err";
+         $! = EINVAL;
+         return;
+      }
+   }
+
+   my @sockopts_enabled;
+   push @sockopts_enabled, SO_REUSEADDR if $arg->{ReuseAddr};
+   push @sockopts_enabled, SO_REUSEPORT if $arg->{ReusePort};
+   push @sockopts_enabled, SO_BROADCAST if $arg->{Broadcast};
+
+   my $blocking = $arg->{Blocking};
+   defined $blocking or $blocking = 1;
+
+   my $v6only = $arg->{V6Only};
+
+   # IO::Socket::INET defines this key. IO::Socket::IP always implements the
+   # behaviour it requests, so we can ignore it, unless the caller is for some
+   # reason asking to disable it.
+   if( defined $arg->{MultiHomed} and !$arg->{MultiHomed} ) {
+      croak "Cannot disable the MultiHomed parameter";
+   }
+
+   my @infos;
+   foreach my $local ( @localinfos ? @localinfos : {} ) {
+      foreach my $peer ( @peerinfos ? @peerinfos : {} ) {
+         next if defined $local->{family}   and defined $peer->{family}   and
+            $local->{family} != $peer->{family};
+         next if defined $local->{socktype} and defined $peer->{socktype} and
+            $local->{socktype} != $peer->{socktype};
+         next if defined $local->{protocol} and defined $peer->{protocol} and
+            $local->{protocol} != $peer->{protocol};
+
+         my $family   = $local->{family}   || $peer->{family}   or next;
+         my $socktype = $local->{socktype} || $peer->{socktype} or next;
+         my $protocol = $local->{protocol} || $peer->{protocol} || 0;
+
+         push @infos, {
+            family    => $family,
+            socktype  => $socktype,
+            protocol  => $protocol,
+            localaddr => $local->{addr},
+            peeraddr  => $peer->{addr},
+         };
+      }
+   }
+
+   if( !@infos ) {
+      # If there was a Family hint then create a plain unbound, unconnected socket
+      if( defined $hints{family} ) {
+         @infos = ( {
+            family   => $hints{family},
+            socktype => $hints{socktype},
+            protocol => $hints{protocol},
+         } );
+      }
+      # If there wasn't, use getaddrinfo()'s AI_ADDRCONFIG side-effect to guess a
+      # suitable family first.
+      else {
+         ( my $err, @infos ) = getaddrinfo( "", "0", \%hints );
+         if( $err ) {
+            $@ = "$err";
+            $! = EINVAL;
+            return;
+         }
+
+         # We'll take all the @infos anyway, because some OSes (HPUX) are known to
+         # ignore the AI_ADDRCONFIG hint and return AF_INET6 even if they don't
+         # support them
+      }
+   }
+
+   # In the nonblocking case, caller will be calling ->setup multiple times.
+   # Store configuration in the object for the ->setup method
+   # Yes, these are messy. Sorry, I can't help that...
+
+   ${*$self}{io_socket_ip_infos} = \@infos;
+
+   ${*$self}{io_socket_ip_idx} = -1;
+
+   ${*$self}{io_socket_ip_sockopts} = \@sockopts_enabled;
+   ${*$self}{io_socket_ip_v6only} = $v6only;
+   ${*$self}{io_socket_ip_listenqueue} = $listenqueue;
+   ${*$self}{io_socket_ip_blocking} = $blocking;
+
+   ${*$self}{io_socket_ip_errors} = [ undef, undef, undef ];
+
+   # ->setup is allowed to return false in nonblocking mode
+   $self->setup or !$blocking or return undef;
+
+   return $self;
+}
+
+sub setup
+{
+   my $self = shift;
+
+   while(1) {
+      ${*$self}{io_socket_ip_idx}++;
+      last if ${*$self}{io_socket_ip_idx} >= @{ ${*$self}{io_socket_ip_infos} };
+
+      my $info = ${*$self}{io_socket_ip_infos}->[${*$self}{io_socket_ip_idx}];
+
+      $self->socket( @{$info}{qw( family socktype protocol )} ) or
+         ( ${*$self}{io_socket_ip_errors}[2] = $!, next );
+
+      $self->blocking( 0 ) unless ${*$self}{io_socket_ip_blocking};
+
+      foreach my $sockopt ( @{ ${*$self}{io_socket_ip_sockopts} } ) {
+         $self->setsockopt( SOL_SOCKET, $sockopt, pack "i", 1 ) or ( $@ = "$!", return undef );
+      }
+
+      if( defined ${*$self}{io_socket_ip_v6only} and defined $AF_INET6 and $info->{family} == $AF_INET6 ) {
+         my $v6only = ${*$self}{io_socket_ip_v6only};
+         $self->setsockopt( IPPROTO_IPV6, IPV6_V6ONLY, pack "i", $v6only ) or ( $@ = "$!", return undef );
+      }
+
+      if( defined( my $addr = $info->{localaddr} ) ) {
+         $self->bind( $addr ) or
+            ( ${*$self}{io_socket_ip_errors}[1] = $!, next );
+      }
+
+      if( defined( my $listenqueue = ${*$self}{io_socket_ip_listenqueue} ) ) {
+         $self->listen( $listenqueue ) or ( $@ = "$!", return undef );
+      }
+
+      if( defined( my $addr = $info->{peeraddr} ) ) {
+         if( $self->connect( $addr ) ) {
+            $! = 0;
+            return 1;
+         }
+
+         if( $! == EINPROGRESS or $! == EWOULDBLOCK ) {
+            ${*$self}{io_socket_ip_connect_in_progress} = 1;
+            return 0;
+         }
+
+         # If connect failed but we have no system error there must be an error
+         # at the application layer, like a bad certificate with
+         # IO::Socket::SSL.
+         # In this case don't continue IP based multi-homing because the problem
+         # cannot be solved at the IP layer.
+         return 0 if ! $!;
+
+         ${*$self}{io_socket_ip_errors}[0] = $!;
+         next;
+      }
+
+      return 1;
+   }
+
+   # Pick the most appropriate error, stringified
+   $! = ( grep defined, @{ ${*$self}{io_socket_ip_errors}} )[0];
+   $@ = "$!";
+   return undef;
+}
+
+sub connect :method
+{
+   my $self = shift;
+
+   # It seems that IO::Socket hides EINPROGRESS errors, making them look like
+   # a success. This is annoying here.
+   # Instead of putting up with its frankly-irritating intentional breakage of
+   # useful APIs I'm just going to end-run around it and call core's connect()
+   # directly
+
+   if( @_ ) {
+      my ( $addr ) = @_;
+
+      # Annoyingly IO::Socket's connect() is where the timeout logic is
+      # implemented, so we'll have to reinvent it here
+      my $timeout = ${*$self}{'io_socket_timeout'};
+
+      return connect( $self, $addr ) unless defined $timeout;
+
+      my $was_blocking = $self->blocking( 0 );
+
+      my $err = defined connect( $self, $addr ) ? 0 : $!+0;
+
+      if( !$err ) {
+         # All happy
+         $self->blocking( $was_blocking );
+         return 1;
+      }
+      elsif( not( $err == EINPROGRESS or $err == EWOULDBLOCK ) ) {
+         # Failed for some other reason
+         return undef;
+      }
+      elsif( !$was_blocking ) {
+         # We shouldn't block anyway
+         return undef;
+      }
+
+      my $vec = ''; vec( $vec, $self->fileno, 1 ) = 1;
+      if( !select( undef, $vec, $vec, $timeout ) ) {
+         $! = ETIMEDOUT;
+         return undef;
+      }
+
+      # Hoist the error by connect()ing a second time
+      $err = $self->getsockopt( SOL_SOCKET, SO_ERROR );
+      $err = 0 if $err == EISCONN; # Some OSes give EISCONN
+
+      $self->blocking( $was_blocking );
+
+      $! = $err, return undef if $err;
+      return 1;
+   }
+
+   return 1 if !${*$self}{io_socket_ip_connect_in_progress};
+
+   # See if a connect attempt has just failed with an error
+   if( my $errno = $self->getsockopt( SOL_SOCKET, SO_ERROR ) ) {
+      delete ${*$self}{io_socket_ip_connect_in_progress};
+      ${*$self}{io_socket_ip_errors}[0] = $! = $errno;
+      return $self->setup;
+   }
+
+   # No error, so either connect is still in progress, or has completed
+   # successfully. We can tell by trying to connect() again; either it will
+   # succeed or we'll get EISCONN (connected successfully), or EALREADY
+   # (still in progress). This even works on MSWin32.
+   my $addr = ${*$self}{io_socket_ip_infos}[${*$self}{io_socket_ip_idx}]{peeraddr};
+
+   if( connect( $self, $addr ) or $! == EISCONN ) {
+      delete ${*$self}{io_socket_ip_connect_in_progress};
+      $! = 0;
+      return 1;
+   }
+   else {
+      $! = EINPROGRESS;
+      return 0;
+   }
+}
+
+sub connected
+{
+   my $self = shift;
+   return defined $self->fileno &&
+          !${*$self}{io_socket_ip_connect_in_progress} &&
+          defined getpeername( $self ); # ->peername caches, we need to detect disconnection
+}
+
+sub _get_host_service
+{
+   my $self = shift;
+   my ( $addr, $flags, $xflags ) = @_;
+
+   defined $addr or
+      $! = ENOTCONN, return;
+
+   $flags |= NI_DGRAM if $self->socktype == SOCK_DGRAM;
+
+   my ( $err, $host, $service ) = getnameinfo( $addr, $flags, $xflags || 0 );
+   croak "getnameinfo - $err" if $err;
+
+   return ( $host, $service );
+}
+
+sub _unpack_sockaddr
+{
+   my ( $addr ) = @_;
+   my $family = sockaddr_family $addr;
+
+   if( $family == AF_INET ) {
+      return ( Socket::unpack_sockaddr_in( $addr ) )[1];
+   }
+   elsif( defined $AF_INET6 and $family == $AF_INET6 ) {
+      return ( Socket::unpack_sockaddr_in6( $addr ) )[1];
+   }
+   else {
+      croak "Unrecognised address family $family";
+   }
+}
+
+sub sockhost_service
+{
+   my $self = shift;
+   my ( $numeric ) = @_;
+
+   $self->_get_host_service( $self->sockname, $numeric ? NI_NUMERICHOST|NI_NUMERICSERV : 0 );
+}
+
+sub sockhost { my $self = shift; scalar +( $self->_get_host_service( $self->sockname, NI_NUMERICHOST, NIx_NOSERV ) )[0] }
+sub sockport { my $self = shift; scalar +( $self->_get_host_service( $self->sockname, NI_NUMERICSERV, NIx_NOHOST ) )[1] }
+
+sub sockhostname { my $self = shift; scalar +( $self->_get_host_service( $self->sockname, 0, NIx_NOSERV ) )[0] }
+sub sockservice  { my $self = shift; scalar +( $self->_get_host_service( $self->sockname, 0, NIx_NOHOST ) )[1] }
+
+sub sockaddr { my $self = shift; _unpack_sockaddr $self->sockname }
+
+sub peerhost_service
+{
+   my $self = shift;
+   my ( $numeric ) = @_;
+
+   $self->_get_host_service( $self->peername, $numeric ? NI_NUMERICHOST|NI_NUMERICSERV : 0 );
+}
+
+sub peerhost { my $self = shift; scalar +( $self->_get_host_service( $self->peername, NI_NUMERICHOST, NIx_NOSERV ) )[0] }
+sub peerport { my $self = shift; scalar +( $self->_get_host_service( $self->peername, NI_NUMERICSERV, NIx_NOHOST ) )[1] }
+
+sub peerhostname { my $self = shift; scalar +( $self->_get_host_service( $self->peername, 0, NIx_NOSERV ) )[0] }
+sub peerservice  { my $self = shift; scalar +( $self->_get_host_service( $self->peername, 0, NIx_NOHOST ) )[1] }
+
+sub peeraddr { my $self = shift; _unpack_sockaddr $self->peername }
+
+# This unbelievably dodgy hack works around the bug that IO::Socket doesn't do
+# it
+#    https://rt.cpan.org/Ticket/Display.html?id=61577
+sub accept
+{
+   my $self = shift;
+   my ( $new, $peer ) = $self->SUPER::accept( @_ ) or return;
+
+   ${*$new}{$_} = ${*$self}{$_} for qw( io_socket_domain io_socket_type io_socket_proto );
+
+   return wantarray ? ( $new, $peer )
+                    : $new;
+}
+
+# This second unbelievably dodgy hack guarantees that $self->fileno doesn't
+# change, which is useful during nonblocking connect
+sub socket :method
+{
+   my $self = shift;
+   return $self->SUPER::socket(@_) if not defined $self->fileno;
+
+   # I hate core prototypes sometimes...
+   socket( my $tmph, $_[0], $_[1], $_[2] ) or return undef;
+
+   dup2( $tmph->fileno, $self->fileno ) or die "Unable to dup2 $tmph onto $self - $!";
+}
+
+# Versions of IO::Socket before 1.35 may leave socktype undef if from, say, an
+#   ->fdopen call. In this case we'll apply a fix
+BEGIN {
+   if( eval($IO::Socket::VERSION) < 1.35 ) {
+      *socktype = sub {
+         my $self = shift;
+         my $type = $self->SUPER::socktype;
+         if( !defined $type ) {
+            $type = $self->sockopt( Socket::SO_TYPE() );
+         }
+         return $type;
+      };
+   }
+}
+
+sub as_inet
+{
+   my $self = shift;
+   croak "Cannot downgrade a non-PF_INET socket to IO::Socket::INET" unless $self->sockdomain == AF_INET;
+   return IO::Socket::INET->new_from_fd( $self->fileno, "r+" );
+}
+
+sub split_addr
+{
+   shift;
+   my ( $addr ) = @_;
+
+   local ( $1, $2 ); # Placate a taint-related bug; [perl #67962]
+   if( $addr =~ m/\A\[($IPv6_re)\](?::([^\s:]*))?\z/ or
+       $addr =~ m/\A([^\s:]*):([^\s:]*)\z/ ) {
+      return ( $1, $2 ) if defined $2 and length $2;
+      return ( $1, undef );
+   }
+
+   return ( $addr, undef );
+}
+
+sub join_addr
+{
+   shift;
+   my ( $host, $port ) = @_;
+
+   $host = "[$host]" if $host =~ m/:/;
+
+   return join ":", $host, $port if defined $port;
+   return $host;
+}
+
+# Since IO::Socket->new( Domain => ... ) will delete the Domain parameter
+# before calling ->configure, we need to keep track of which it was
+
+package # hide from indexer
+   IO::Socket::IP::_ForINET;
+use base qw( IO::Socket::IP );
+
+sub configure
+{
+   # This is evil
+   my $self = shift;
+   my ( $arg ) = @_;
+
+   bless $self, "IO::Socket::IP";
+   $self->configure( { %$arg, Family => Socket::AF_INET() } );
+}
+
+package # hide from indexer
+   IO::Socket::IP::_ForINET6;
+use base qw( IO::Socket::IP );
+
+sub configure
+{
+   # This is evil
+   my $self = shift;
+   my ( $arg ) = @_;
+
+   bless $self, "IO::Socket::IP";
+   $self->configure( { %$arg, Family => Socket::AF_INET6() } );
+}
+
+0x55AA;
+                                                     package diagnostics;
+
+=head1 NAME
+
+diagnostics, splain - produce verbose warning diagnostics
+
+=head1 SYNOPSIS
+
+Using the C<diagnostics> pragma:
+
+    use diagnostics;
+    use diagnostics -verbose;
+
+    enable  diagnostics;
+    disable diagnostics;
+
+Using the C<splain> standalone filter program:
+
+    perl program 2>diag.out
+    splain [-v] [-p] diag.out
+
+Using diagnostics to get stack traces from a misbehaving script:
+
+    perl -Mdiagnostics=-traceonly my_script.pl
+
+=head1 DESCRIPTION
+
+=head2 The C<diagnostics> Pragma
+
+This module extends the terse diagnostics normally emitted by both the
+perl compiler and the perl interpreter (from running perl with a -w 
+switch or C<use warnings>), augmenting them with the more
+explicative and endearing descriptions found in L<perldiag>.  Like the
+other pragmata, it affects the compilation phase of your program rather
+than merely the execution phase.
+
+To use in your program as a pragma, merely invoke
+
+    use diagnostics;
+
+at the start (or near the start) of your program.  (Note 
+that this I<does> enable perl's B<-w> flag.)  Your whole
+compilation will then be subject(ed :-) to the enhanced diagnostics.
+These still go out B<STDERR>.
+
+Due to the interaction between runtime and compiletime issues,
+and because it's probably not a very good idea anyway,
+you may not use C<no diagnostics> to turn them off at compiletime.
+However, you may control their behaviour at runtime using the 
+disable() and enable() methods to turn them off and on respectively.
+
+The B<-verbose> flag first prints out the L<perldiag> introduction before
+any other diagnostics.  The $diagnostics::PRETTY variable can generate nicer
+escape sequences for pagers.
+
+Warnings dispatched from perl itself (or more accurately, those that match
+descriptions found in L<perldiag>) are only displayed once (no duplicate
+descriptions).  User code generated warnings a la warn() are unaffected,
+allowing duplicate user messages to be displayed.
+
+This module also adds a stack trace to the error message when perl dies.
+This is useful for pinpointing what
+caused the death.  The B<-traceonly> (or
+just B<-t>) flag turns off the explanations of warning messages leaving just
+the stack traces.  So if your script is dieing, run it again with
+
+  perl -Mdiagnostics=-traceonly my_bad_script
+
+to see the call stack at the time of death.  By supplying the B<-warntrace>
+(or just B<-w>) flag, any warnings emitted will also come with a stack
+trace.
+
+=head2 The I<splain> Program
+
+While apparently a whole nuther program, I<splain> is actually nothing
+more than a link to the (executable) F<diagnostics.pm> module, as well as
+a link to the F<diagnostics.pod> documentation.  The B<-v> flag is like
+the C<use diagnostics -verbose> directive.
+The B<-p> flag is like the
+$diagnostics::PRETTY variable.  Since you're post-processing with 
+I<splain>, there's no sense in being able to enable() or disable() processing.
+
+Output from I<splain> is directed to B<STDOUT>, unlike the pragma.
+
+=head1 EXAMPLES
+
+The following file is certain to trigger a few errors at both
+runtime and compiletime:
+
+    use diagnostics;
+    print NOWHERE "nothing\n";
+    print STDERR "\n\tThis message should be unadorned.\n";
+    warn "\tThis is a user warning";
+    print "\nDIAGNOSTIC TESTER: Please enter a <CR> here: ";
+    my $a, $b = scalar <STDIN>;
+    print "\n";
+    print $x/$y;
+
+If you prefer to run your program first and look at its problem
+afterwards, do this:
+
+    perl -w test.pl 2>test.out
+    ./splain < test.out
+
+Note that this is not in general possible in shells of more dubious heritage, 
+as the theoretical 
+
+    (perl -w test.pl >/dev/tty) >& test.out
+    ./splain < test.out
+
+Because you just moved the existing B<stdout> to somewhere else.
+
+If you don't want to modify your source code, but still have on-the-fly
+warnings, do this:
+
+    exec 3>&1; perl -w test.pl 2>&1 1>&3 3>&- | splain 1>&2 3>&- 
+
+Nifty, eh?
+
+If you want to control warnings on the fly, do something like this.
+Make sure you do the C<use> first, or you won't be able to get
+at the enable() or disable() methods.
+
+    use diagnostics; # checks entire compilation phase 
+	print "\ntime for 1st bogus diags: SQUAWKINGS\n";
+	print BOGUS1 'nada';
+	print "done with 1st bogus\n";
+
+    disable diagnostics; # only turns off runtime warnings
+	print "\ntime for 2nd bogus: (squelched)\n";
+	print BOGUS2 'nada';
+	print "done with 2nd bogus\n";
+
+    enable diagnostics; # turns back on runtime warnings
+	print "\ntime for 3rd bogus: SQUAWKINGS\n";
+	print BOGUS3 'nada';
+	print "done with 3rd bogus\n";
+
+    disable diagnostics;
+	print "\ntime for 4th bogus: (squelched)\n";
+	print BOGUS4 'nada';
+	print "done with 4th bogus\n";
+
+=head1 INTERNALS
+
+Diagnostic messages derive from the F<perldiag.pod> file when available at
+runtime.  Otherwise, they may be embedded in the file itself when the
+splain package is built.   See the F<Makefile> for details.
+
+If an extant $SIG{__WARN__} handler is discovered, it will continue
+to be honored, but only after the diagnostics::splainthis() function 
+(the module's $SIG{__WARN__} interceptor) has had its way with your
+warnings.
+
+There is a $diagnostics::DEBUG variable you may set if you're desperately
+curious what sorts of things are being intercepted.
+
+    BEGIN { $diagnostics::DEBUG = 1 } 
+
+
+=head1 BUGS
+
+Not being able to say "no diagnostics" is annoying, but may not be
+insurmountable.
+
+The C<-pretty> directive is called too late to affect matters.
+You have to do this instead, and I<before> you load the module.
+
+    BEGIN { $diagnostics::PRETTY = 1 } 
+
+I could start up faster by delaying compilation until it should be
+needed, but this gets a "panic: top_level" when using the pragma form
+in Perl 5.001e.
+
+While it's true that this documentation is somewhat subserious, if you use
+a program named I<splain>, you should expect a bit of whimsy.
+
+=head1 AUTHOR
+
+Tom Christiansen <F<tchrist@mox.perl.com>>, 25 June 1995.
+
+=cut
+
+use strict;
+use 5.009001;
+use Carp;
+$Carp::Internal{__PACKAGE__.""}++;
+
+our $VERSION = '1.34';
+our $DEBUG;
+our $VERBOSE;
+our $PRETTY;
+our $TRACEONLY = 0;
+our $WARNTRACE = 0;
+
+use Config;
+use Text::Tabs 'expand';
+my $privlib = $Config{privlibexp};
+if ($^O eq 'VMS') {
+    require VMS::Filespec;
+    $privlib = VMS::Filespec::unixify($privlib);
+}
+my @trypod = (
+	   "$privlib/pod/perldiag.pod",
+	   "$privlib/pods/perldiag.pod",
+	  );
+# handy for development testing of new warnings etc
+unshift @trypod, "./pod/perldiag.pod" if -e "pod/perldiag.pod";
+(my $PODFILE) = ((grep { -e } @trypod), $trypod[$#trypod])[0];
+
+$DEBUG ||= 0;
+
+local $| = 1;
+local $_;
+local $.;
+
+my $standalone;
+my(%HTML_2_Troff, %HTML_2_Latin_1, %HTML_2_ASCII_7);
+
+CONFIG: {
+    our $opt_p = our $opt_d = our $opt_v = our $opt_f = '';
+
+    unless (caller) {
+	$standalone++;
+	require Getopt::Std;
+	Getopt::Std::getopts('pdvf:')
+	    or die "Usage: $0 [-v] [-p] [-f splainpod]";
+	$PODFILE = $opt_f if $opt_f;
+	$DEBUG = 2 if $opt_d;
+	$VERBOSE = $opt_v;
+	$PRETTY = $opt_p;
+    }
+
+    if (open(POD_DIAG, $PODFILE)) {
+	warn "Happy happy podfile from real $PODFILE\n" if $DEBUG;
+	last CONFIG;
+    } 
+
+    if (caller) {
+	INCPATH: {
+	    for my $file ( (map { "$_/".__PACKAGE__.".pm" } @INC), $0) {
+		warn "Checking $file\n" if $DEBUG;
+		if (open(POD_DIAG, $file)) {
+		    while (<POD_DIAG>) {
+			next unless
+			    /^__END__\s*# wish diag dbase were more accessible/;
+			print STDERR "podfile is $file\n" if $DEBUG;
+			last INCPATH;
+		    }
+		}
+	    } 
+	}
+    } else { 
+	print STDERR "podfile is <DATA>\n" if $DEBUG;
+	*POD_DIAG = *main::DATA;
+    }
+}
+if (eof(POD_DIAG)) { 
+    die "couldn't find diagnostic data in $PODFILE @INC $0";
+}
+
+
+%HTML_2_Troff = (
+    'amp'	=>	'&',	#   ampersand
+    'lt'	=>	'<',	#   left chevron, less-than
+    'gt'	=>	'>',	#   right chevron, greater-than
+    'quot'	=>	'"',	#   double quote
+
+    "Aacute"	=>	"A\\*'",	#   capital A, acute accent
+    # etc
+
+);
+
+%HTML_2_Latin_1 = (
+    'amp'	=>	'&',	#   ampersand
+    'lt'	=>	'<',	#   left chevron, less-than
+    'gt'	=>	'>',	#   right chevron, greater-than
+    'quot'	=>	'"',	#   double quote
+
+    "Aacute"	=>	"\xC1"	#   capital A, acute accent
+
+    # etc
+);
+
+%HTML_2_ASCII_7 = (
+    'amp'	=>	'&',	#   ampersand
+    'lt'	=>	'<',	#   left chevron, less-than
+    'gt'	=>	'>',	#   right chevron, greater-than
+    'quot'	=>	'"',	#   double quote
+
+    "Aacute"	=>	"A"	#   capital A, acute accent
+    # etc
+);
+
+our %HTML_Escapes;
+*HTML_Escapes = do {
+    if ($standalone) {
+	$PRETTY ? \%HTML_2_Latin_1 : \%HTML_2_ASCII_7; 
+    } else {
+	\%HTML_2_Latin_1; 
+    }
+}; 
+
+*THITHER = $standalone ? *STDOUT : *STDERR;
+
+my %transfmt = (); 
+my $transmo = <<EOFUNC;
+sub transmo {
+    #local \$^W = 0;  # recursive warnings we do NOT need!
+EOFUNC
+
+my %msg;
+{
+    print STDERR "FINISHING COMPILATION for $_\n" if $DEBUG;
+    local $/ = '';
+    local $_;
+    my $header;
+    my @headers;
+    my $for_item;
+    my $seen_body;
+    while (<POD_DIAG>) {
+
+	sub _split_pod_link {
+	    $_[0] =~ m'(?:([^|]*)\|)?([^/]*)(?:/("?)(.*)\3)?'s;
+	    ($1,$2,$4);
+	}
+
+	unescape();
+	if ($PRETTY) {
+	    sub noop   { return $_[0] }  # spensive for a noop
+	    sub bold   { my $str =$_[0];  $str =~ s/(.)/$1\b$1/g; return $str; } 
+	    sub italic { my $str = $_[0]; $str =~ s/(.)/_\b$1/g;  return $str; } 
+	    s/C<<< (.*?) >>>|C<< (.*?) >>|[BC]<(.*?)>/bold($+)/ges;
+	    s/[IF]<(.*?)>/italic($1)/ges;
+	    s/L<(.*?)>/
+	       my($text,$page,$sect) = _split_pod_link($1);
+	       defined $text
+	        ? $text
+	        : defined $sect
+	           ? italic($sect) . ' in ' . italic($page)
+	           : italic($page)
+	     /ges;
+	     s/S<(.*?)>/
+               $1
+             /ges;
+	} else {
+	    s/C<<< (.*?) >>>|C<< (.*?) >>|[BC]<(.*?)>/$+/gs;
+	    s/[IF]<(.*?)>/$1/gs;
+	    s/L<(.*?)>/
+	       my($text,$page,$sect) = _split_pod_link($1);
+	       defined $text
+	        ? $text
+	        : defined $sect
+	           ? qq '"$sect" in $page'
+	           : $page
+	     /ges;
+	    s/S<(.*?)>/
+               $1
+             /ges;
+	} 
+	unless (/^=/) {
+	    if (defined $header) { 
+		if ( $header eq 'DESCRIPTION' && 
+		    (   /Optional warnings are enabled/ 
+		     || /Some of these messages are generic./
+		    ) )
+		{
+		    next;
+		}
+		$_ = expand $_;
+		s/^/    /gm;
+		$msg{$header} .= $_;
+		for my $h(@headers) { $msg{$h} .= $_ }
+		++$seen_body;
+	 	undef $for_item;	
+	    }
+	    next;
+	} 
+
+	# If we have not come across the body of the description yet, then
+	# the previous header needs to share the same description.
+	if ($seen_body) {
+	    @headers = ();
+	}
+	else {
+	    push @headers, $header if defined $header;
+	}
+
+	unless ( s/=item (.*?)\s*\z//s) {
+
+	    if ( s/=head1\sDESCRIPTION//) {
+		$msg{$header = 'DESCRIPTION'} = '';
+		undef $for_item;
+	    }
+	    elsif( s/^=for\s+diagnostics\s*\n(.*?)\s*\z// ) {
+		$for_item = $1;
+	    }
+	    elsif( /^=back/ ) { # Stop processing body here
+		undef $header;
+		undef $for_item;
+		$seen_body = 0;
+		next;
+	    }
+	    next;
+	}
+
+	if( $for_item ) { $header = $for_item; undef $for_item } 
+	else {
+	    $header = $1;
+
+	    $header =~ s/\n/ /gs; # Allow multi-line headers
+	}
+
+	# strip formatting directives from =item line
+	$header =~ s/[A-Z]<(.*?)>/$1/g;
+
+	# Since we strip "(\.\s*)\n" when we search a warning, strip it here as well
+	$header =~ s/(\.\s*)?$//;
+
+        my @toks = split( /(%l?[dxX]|%[ucp]|%(?:\.\d+)?[fs])/, $header );
+	if (@toks > 1) {
+            my $conlen = 0;
+            for my $i (0..$#toks){
+                if( $i % 2 ){
+                    if(      $toks[$i] eq '%c' ){
+                        $toks[$i] = '.';
+                    } elsif( $toks[$i] =~ /^%(?:d|u)$/ ){
+                        $toks[$i] = '\d+';
+                    } elsif( $toks[$i] =~ '^%(?:s|.*f)$' ){
+                        $toks[$i] = $i == $#toks ? '.*' : '.*?';
+                    } elsif( $toks[$i] =~ '%.(\d+)s' ){
+                        $toks[$i] = ".{$1}";
+                    } elsif( $toks[$i] =~ '^%l*([pxX])$' ){
+                        $toks[$i] = $1 eq 'X' ? '[\dA-F]+' : '[\da-f]+';
+                    }
+                } elsif( length( $toks[$i] ) ){
+                    $toks[$i] = quotemeta $toks[$i];
+                    $conlen += length( $toks[$i] );
+                }
+            }  
+            my $lhs = join( '', @toks );
+            $lhs =~ s/(\\\s)+/\\s+/g; # Replace lit space with multi-space match
+	    $transfmt{$header}{pat} =
+              "    s^\\s*$lhs\\s*\Q$header\Es\n\t&& return 1;\n";
+            $transfmt{$header}{len} = $conlen;
+	} else {
+            my $lhs = "\Q$header\E";
+            $lhs =~ s/(\\\s)+/\\s+/g; # Replace lit space with multi-space match
+            $transfmt{$header}{pat} =
+	      "    s^\\s*$lhs\\s*\Q$header\E\n\t && return 1;\n";
+            $transfmt{$header}{len} = length( $header );
+	} 
+
+	print STDERR __PACKAGE__.": Duplicate entry: \"$header\"\n"
+	    if $msg{$header};
+
+	$msg{$header} = '';
+	$seen_body = 0;
+    } 
+
+
+    close POD_DIAG unless *main::DATA eq *POD_DIAG;
+
+    die "No diagnostics?" unless %msg;
+
+    # Apply patterns in order of decreasing sum of lengths of fixed parts
+    # Seems the best way of hitting the right one.
+    for my $hdr ( sort { $transfmt{$b}{len} <=> $transfmt{$a}{len} }
+                  keys %transfmt ){
+        $transmo .= $transfmt{$hdr}{pat};
+    }
+    $transmo .= "    return 0;\n}\n";
+    print STDERR $transmo if $DEBUG;
+    eval $transmo;
+    die $@ if $@;
+}
+
+if ($standalone) {
+    if (!@ARGV and -t STDIN) { print STDERR "$0: Reading from STDIN\n" } 
+    while (defined (my $error = <>)) {
+	splainthis($error) || print THITHER $error;
+    } 
+    exit;
+} 
+
+my $olddie;
+my $oldwarn;
+
+sub import {
+    shift;
+    $^W = 1; # yup, clobbered the global variable; 
+	     # tough, if you want diags, you want diags.
+    return if defined $SIG{__WARN__} && ($SIG{__WARN__} eq \&warn_trap);
+
+    for (@_) {
+
+	/^-d(ebug)?$/ 	   	&& do {
+				    $DEBUG++;
+				    next;
+				   };
+
+	/^-v(erbose)?$/ 	&& do {
+				    $VERBOSE++;
+				    next;
+				   };
+
+	/^-p(retty)?$/ 		&& do {
+				    print STDERR "$0: I'm afraid it's too late for prettiness.\n";
+				    $PRETTY++;
+				    next;
+			       };
+	# matches trace and traceonly for legacy doc mixup reasons
+	/^-t(race(only)?)?$/	&& do {
+				    $TRACEONLY++;
+				    next;
+			       };
+	/^-w(arntrace)?$/ 	&& do {
+				    $WARNTRACE++;
+				    next;
+			       };
+
+	warn "Unknown flag: $_";
+    } 
+
+    $oldwarn = $SIG{__WARN__};
+    $olddie = $SIG{__DIE__};
+    $SIG{__WARN__} = \&warn_trap;
+    $SIG{__DIE__} = \&death_trap;
+} 
+
+sub enable { &import }
+
+sub disable {
+    shift;
+    return unless $SIG{__WARN__} eq \&warn_trap;
+    $SIG{__WARN__} = $oldwarn || '';
+    $SIG{__DIE__} = $olddie || '';
+} 
+
+sub warn_trap {
+    my $warning = $_[0];
+    if (caller eq __PACKAGE__ or !splainthis($warning)) {
+	if ($WARNTRACE) {
+	    print STDERR Carp::longmess($warning);
+	} else {
+	    print STDERR $warning;
+	}
+    } 
+    goto &$oldwarn if defined $oldwarn and $oldwarn and $oldwarn ne \&warn_trap;
+};
+
+sub death_trap {
+    my $exception = $_[0];
+
+    # See if we are coming from anywhere within an eval. If so we don't
+    # want to explain the exception because it's going to get caught.
+    my $in_eval = 0;
+    my $i = 0;
+    while (my $caller = (caller($i++))[3]) {
+      if ($caller eq '(eval)') {
+	$in_eval = 1;
+	last;
+      }
+    }
+
+    splainthis($exception) unless $in_eval;
+    if (caller eq __PACKAGE__) {
+	print STDERR "INTERNAL EXCEPTION: $exception";
+    } 
+    &$olddie if defined $olddie and $olddie and $olddie ne \&death_trap;
+
+    return if $in_eval;
+
+    # We don't want to unset these if we're coming from an eval because
+    # then we've turned off diagnostics.
+
+    # Switch off our die/warn handlers so we don't wind up in our own
+    # traps.
+    $SIG{__DIE__} = $SIG{__WARN__} = '';
+
+    $exception =~ s/\n(?=.)/\n\t/gas;
+
+    die Carp::longmess("__diagnostics__")
+	  =~ s/^__diagnostics__.*?line \d+\.?\n/
+		  "Uncaught exception from user code:\n\t$exception"
+	      /re;
+	# up we go; where we stop, nobody knows, but i think we die now
+	# but i'm deeply afraid of the &$olddie guy reraising and us getting
+	# into an indirect recursion loop
+};
+
+my %exact_duplicate;
+my %old_diag;
+my $count;
+my $wantspace;
+sub splainthis {
+  return 0 if $TRACEONLY;
+  for (my $tmp = shift) {
+    local $\;
+    local $!;
+    ### &finish_compilation unless %msg;
+    s/(\.\s*)?\n+$//;
+    my $orig = $_;
+    # return unless defined;
+
+    # get rid of the where-are-we-in-input part
+    s/, <.*?> (?:line|chunk).*$//;
+
+    # Discard 1st " at <file> line <no>" and all text beyond
+    # but be aware of messages containing " at this-or-that"
+    my $real = 0;
+    my @secs = split( / at / );
+    return unless @secs;
+    $_ = $secs[0];
+    for my $i ( 1..$#secs ){
+        if( $secs[$i] =~ /.+? (?:line|chunk) \d+/ ){
+            $real = 1;
+            last;
+        } else {
+            $_ .= ' at ' . $secs[$i];
+	}
+    }
+
+    # remove parenthesis occurring at the end of some messages 
+    s/^\((.*)\)$/$1/;
+
+    if ($exact_duplicate{$orig}++) {
+	return &transmo;
+    } else {
+	return 0 unless &transmo;
+    }
+
+    my $short = shorten($orig);
+    if ($old_diag{$_}) {
+	autodescribe();
+	print THITHER "$short (#$old_diag{$_})\n";
+	$wantspace = 1;
+    } elsif (!$msg{$_} && $orig =~ /\n./s) {
+	# A multiline message, like "Attempt to reload /
+	# Compilation failed"
+	my $found;
+	for (split /^/, $orig) {
+	    splainthis($_) and $found = 1;
+	}
+	return $found;
+    } else {
+	autodescribe();
+	$old_diag{$_} = ++$count;
+	print THITHER "\n" if $wantspace;
+	$wantspace = 0;
+	print THITHER "$short (#$old_diag{$_})\n";
+	if ($msg{$_}) {
+	    print THITHER $msg{$_};
+	} else {
+	    if (0 and $standalone) { 
+		print THITHER "    **** Error #$old_diag{$_} ",
+			($real ? "is" : "appears to be"),
+			" an unknown diagnostic message.\n\n";
+	    }
+	    return 0;
+	} 
+    }
+    return 1;
+  }
+} 
+
+sub autodescribe {
+    if ($VERBOSE and not $count) {
+	print THITHER &{$PRETTY ? \&bold : \&noop}("DESCRIPTION OF DIAGNOSTICS"),
+		"\n$msg{DESCRIPTION}\n";
+    } 
+} 
+
+sub unescape { 
+    s {
+            E<  
+            ( [A-Za-z]+ )       
+            >   
+    } { 
+         do {   
+             exists $HTML_Escapes{$1}
+                ? do { $HTML_Escapes{$1} }
+                : do {
+                    warn "Unknown escape: E<$1> in $_";
+                    "E<$1>";
+                } 
+         } 
+    }egx;
+}
+
+sub shorten {
+    my $line = $_[0];
+    if (length($line) > 79 and index($line, "\n") == -1) {
+	my $space_place = rindex($line, ' ', 79);
+	if ($space_place != -1) {
+	    substr($line, $space_place, 1) = "\n\t";
+	} 
+    } 
+    return $line;
+} 
+
+
+1 unless $standalone;  # or it'll complain about itself
+__END__ # wish diag dbase were more accessible
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        package experimental;
+$experimental::VERSION = '0.013';
+use strict;
+use warnings;
+use version ();
+
+use feature ();
+use Carp qw/croak carp/;
+
+my %warnings = map { $_ => 1 } grep { /^experimental::/ } keys %warnings::Offsets;
+my %features = map { $_ => 1 } $] > 5.015006 ? keys %feature::feature : do {
+	my @features;
+	if ($] >= 5.010) {
+		push @features, qw/switch say state/;
+		push @features, 'unicode_strings' if $] > 5.011002;
+	}
+	@features;
+};
+
+my %min_version = (
+	array_base      => '5',
+	autoderef       => '5.14.0',
+	current_sub     => '5.16.0',
+	evalbytes       => '5.16.0',
+	fc              => '5.16.0',
+	lexical_topic   => '5.10.0',
+	lexical_subs    => '5.18.0',
+	postderef       => '5.20.0',
+	postderef_qq    => '5.20.0',
+	refaliasing     => '5.21.5',
+	regex_sets      => '5.18.0',
+	say             => '5.10.0',
+	smartmatch      => '5.10.0',
+	signatures      => '5.20.0',
+	state           => '5.10.0',
+	switch          => '5.10.0',
+	unicode_eval    => '5.16.0',
+	unicode_strings => '5.12.0',
+);
+$_ = version->new($_) for values %min_version;
+
+my %additional = (
+	postderef  => ['postderef_qq'],
+	switch     => ['smartmatch'],
+);
+
+sub _enable {
+	my $pragma = shift;
+	if ($warnings{"experimental::$pragma"}) {
+		warnings->unimport("experimental::$pragma");
+		feature->import($pragma) if exists $features{$pragma};
+		_enable(@{ $additional{$pragma} }) if $additional{$pragma};
+	}
+	elsif ($features{$pragma}) {
+		feature->import($pragma);
+		_enable(@{ $additional{$pragma} }) if $additional{$pragma};
+	}
+	elsif (not exists $min_version{$pragma}) {
+		croak "Can't enable unknown feature $pragma";
+	}
+	elsif ($min_version{$pragma} > $]) {
+		my $stable = $min_version{$pragma};
+		if ($stable->{version}[1] % 2) {
+			$stable = version->new(
+				"5.".($stable->{version}[1]+1).'.0'
+			);
+		}
+		croak "Need perl $stable or later for feature $pragma";
+	}
+}
+
+sub import {
+	my ($self, @pragmas) = @_;
+
+	for my $pragma (@pragmas) {
+		_enable($pragma);
+	}
+	return;
+}
+
+sub _disable {
+	my $pragma = shift;
+	if ($warnings{"experimental::$pragma"}) {
+		warnings->import("experimental::$pragma");
+		feature->unimport($pragma) if exists $features{$pragma};
+		_disable(@{ $additional{$pragma} }) if $additional{$pragma};
+	}
+	elsif ($features{$pragma}) {
+		feature->unimport($pragma);
+		_disable(@{ $additional{$pragma} }) if $additional{$pragma};
+	}
+	elsif (not exists $min_version{$pragma}) {
+		carp "Can't disable unknown feature $pragma, ignoring";
+	}
+}
+
+sub unimport {
+	my ($self, @pragmas) = @_;
+
+	for my $pragma (@pragmas) {
+		_disable($pragma);
+	}
+	return;
+}
+
+1;
+
+#ABSTRACT: Experimental features made easy
+
+__END__
+
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+experimental - Experimental features made easy
+
+=head1 VERSION
+
+version 0.013
+
+=head1 SYNOPSIS
+
+ use experimental 'lexical_subs', 'smartmatch';
+ my sub foo { $_[0] ~~ 1 }
+
+=head1 DESCRIPTION
+
+This pragma provides an easy and convenient way to enable or disable
+experimental features.
+
+Every version of perl has some number of features present but considered
+"experimental."  For much of the life of Perl 5, this was only a designation
+found in the documentation.  Starting in Perl v5.10.0, and more aggressively in
+v5.18.0, experimental features were placed behind pragmata used to enable the
+feature and disable associated warnings.
+
+The C<experimental> pragma exists to combine the required incantations into a
+single interface stable across releases of perl.  For every experimental
+feature, this should enable the feature and silence warnings for the enclosing
+lexical scope:
+
+  use experimental 'feature-name';
+
+To disable the feature and, if applicable, re-enable any warnings, use:
+
+  no experimental 'feature-name';
+
+The supported features, documented further below, are:
+
+	array_base    - allow the use of $[ to change the starting index of @array
+	autoderef     - allow push, each, keys, and other built-ins on references
+	lexical_topic - allow the use of lexical $_ via "my $_"
+	postderef     - allow the use of postfix dereferencing expressions, including
+	                in interpolating strings
+	refaliasing   - allow aliasing via \$x = \$y
+	regex_sets    - allow extended bracketed character classes in regexps
+	signatures    - allow subroutine signatures (for named arguments)
+	smartmatch    - allow the use of ~~
+	switch        - allow the use of ~~, given, and when
+
+=head2 Ordering matters
+
+Using this pragma to 'enable an experimental feature' is another way of saying
+that this pragma will disable the warnings which would result from using that
+feature.  Therefore, the order in which pragmas are applied is important.  In
+particular, you probably want to enable experimental features I<after> you
+enable warnings:
+
+  use warnings;
+  use experimental 'smartmatch';
+
+You also need to take care with modules that enable warnings for you.  A common
+example being Moose.  In this example, warnings for the 'smartmatch' feature are
+first turned on by the warnings pragma, off by the experimental pragma and back
+on again by the Moose module (fix is to switch the last two lines):
+
+  use warnings;
+  use experimental 'smartmatch';
+  use Moose;
+
+=head2 Disclaimer
+
+Because of the nature of the features it enables, forward compatibility can not
+be guaranteed in any way.
+
+=head1 AUTHOR
+
+Leon Timmermans <leont@cpan.org>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Leon Timmermans.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+=cut
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     package Carp::Heavy;
+
+use Carp ();
+
+our $VERSION = '1.36';
+
+# Carp::Heavy was merged into Carp in version 1.12.  Any mismatched versions
+# after this point are not significant and can be ignored.
+if(($Carp::VERSION || 0) < 1.12) {
+	my $cv = defined($Carp::VERSION) ? $Carp::VERSION : "undef";
+	die "Version mismatch between Carp $cv ($INC{q(Carp.pm)}) and Carp::Heavy $VERSION ($INC{q(Carp/Heavy.pm)}).  Did you alter \@INC after Carp was loaded?\n";
+}
+
+1;
+
+# Most of the machinery of Carp used to be here.
+# It has been moved in Carp.pm now, but this placeholder remains for
+# the benefit of modules that like to preload Carp::Heavy directly.
+# This must load Carp, because some modules rely on the historical
+# behaviour of Carp::Heavy loading Carp.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                package sort;
+
+our $VERSION = '2.02';
+
+# The hints for pp_sort are now stored in $^H{sort}; older versions
+# of perl used the global variable $sort::hints. -- rjh 2005-12-19
+
+$sort::quicksort_bit   = 0x00000001;
+$sort::mergesort_bit   = 0x00000002;
+$sort::sort_bits       = 0x000000FF; # allow 256 different ones
+$sort::stable_bit      = 0x00000100;
+
+use strict;
+
+sub import {
+    shift;
+    if (@_ == 0) {
+	require Carp;
+	Carp::croak("sort pragma requires arguments");
+    }
+    local $_;
+    $^H{sort} //= 0;
+    while ($_ = shift(@_)) {
+	if (/^_q(?:uick)?sort$/) {
+	    $^H{sort} &= ~$sort::sort_bits;
+	    $^H{sort} |=  $sort::quicksort_bit;
+	} elsif ($_ eq '_mergesort') {
+	    $^H{sort} &= ~$sort::sort_bits;
+	    $^H{sort} |=  $sort::mergesort_bit;
+	} elsif ($_ eq 'stable') {
+	    $^H{sort} |=  $sort::stable_bit;
+	} elsif ($_ eq 'defaults') {
+	    $^H{sort} =   0;
+	} else {
+	    require Carp;
+	    Carp::croak("sort: unknown subpragma '$_'");
+	}
+    }
+}
+
+sub unimport {
+    shift;
+    if (@_ == 0) {
+	require Carp;
+	Carp::croak("sort pragma requires arguments");
+    }
+    local $_;
+    no warnings 'uninitialized';	# bitops would warn
+    while ($_ = shift(@_)) {
+	if (/^_q(?:uick)?sort$/) {
+	    $^H{sort} &= ~$sort::sort_bits;
+	} elsif ($_ eq '_mergesort') {
+	    $^H{sort} &= ~$sort::sort_bits;
+	} elsif ($_ eq 'stable') {
+	    $^H{sort} &= ~$sort::stable_bit;
+	} else {
+	    require Carp;
+	    Carp::croak("sort: unknown subpragma '$_'");
+	}
+    }
+}
+
+sub current {
+    my @sort;
+    if ($^H{sort}) {
+	push @sort, 'quicksort' if $^H{sort} & $sort::quicksort_bit;
+	push @sort, 'mergesort' if $^H{sort} & $sort::mergesort_bit;
+	push @sort, 'stable'    if $^H{sort} & $sort::stable_bit;
+    }
+    push @sort, 'mergesort' unless @sort;
+    join(' ', @sort);
+}
+
+1;
+__END__
+
+=head1 NAME
+
+sort - perl pragma to control sort() behaviour
+
+=head1 SYNOPSIS
+
+    use sort 'stable';		# guarantee stability
+    use sort '_quicksort';	# use a quicksort algorithm
+    use sort '_mergesort';	# use a mergesort algorithm
+    use sort 'defaults';	# revert to default behavior
+    no  sort 'stable';		# stability not important
+
+    use sort '_qsort';		# alias for quicksort
+
+    my $current;
+    BEGIN {
+	$current = sort::current();	# identify prevailing algorithm
+    }
+
+=head1 DESCRIPTION
+
+With the C<sort> pragma you can control the behaviour of the builtin
+C<sort()> function.
+
+In Perl versions 5.6 and earlier the quicksort algorithm was used to
+implement C<sort()>, but in Perl 5.8 a mergesort algorithm was also made
+available, mainly to guarantee worst case O(N log N) behaviour:
+the worst case of quicksort is O(N**2).  In Perl 5.8 and later,
+quicksort defends against quadratic behaviour by shuffling large
+arrays before sorting.
+
+A stable sort means that for records that compare equal, the original
+input ordering is preserved.  Mergesort is stable, quicksort is not.
+Stability will matter only if elements that compare equal can be
+distinguished in some other way.  That means that simple numerical
+and lexical sorts do not profit from stability, since equal elements
+are indistinguishable.  However, with a comparison such as
+
+   { substr($a, 0, 3) cmp substr($b, 0, 3) }
+
+stability might matter because elements that compare equal on the
+first 3 characters may be distinguished based on subsequent characters.
+In Perl 5.8 and later, quicksort can be stabilized, but doing so will
+add overhead, so it should only be done if it matters.
+
+The best algorithm depends on many things.  On average, mergesort
+does fewer comparisons than quicksort, so it may be better when
+complicated comparison routines are used.  Mergesort also takes
+advantage of pre-existing order, so it would be favored for using
+C<sort()> to merge several sorted arrays.  On the other hand, quicksort
+is often faster for small arrays, and on arrays of a few distinct
+values, repeated many times.  You can force the
+choice of algorithm with this pragma, but this feels heavy-handed,
+so the subpragmas beginning with a C<_> may not persist beyond Perl 5.8.
+The default algorithm is mergesort, which will be stable even if
+you do not explicitly demand it.
+But the stability of the default sort is a side-effect that could
+change in later versions.  If stability is important, be sure to
+say so with a
+
+  use sort 'stable';
+
+The C<no sort> pragma doesn't
+I<forbid> what follows, it just leaves the choice open.  Thus, after
+
+  no sort qw(_mergesort stable);
+
+a mergesort, which happens to be stable, will be employed anyway.
+Note that
+
+  no sort "_quicksort";
+  no sort "_mergesort";
+
+have exactly the same effect, leaving the choice of sort algorithm open.
+
+=head1 CAVEATS
+
+As of Perl 5.10, this pragma is lexically scoped and takes effect
+at compile time. In earlier versions its effect was global and took
+effect at run-time; the documentation suggested using C<eval()> to
+change the behaviour:
+
+  { eval 'use sort qw(defaults _quicksort)'; # force quicksort
+    eval 'no sort "stable"';      # stability not wanted
+    print sort::current . "\n";
+    @a = sort @b;
+    eval 'use sort "defaults"';   # clean up, for others
+  }
+  { eval 'use sort qw(defaults stable)';     # force stability
+    print sort::current . "\n";
+    @c = sort @d;
+    eval 'use sort "defaults"';   # clean up, for others
+  }
+
+Such code no longer has the desired effect, for two reasons.
+Firstly, the use of C<eval()> means that the sorting algorithm
+is not changed until runtime, by which time it's too late to
+have any effect. Secondly, C<sort::current> is also called at
+run-time, when in fact the compile-time value of C<sort::current>
+is the one that matters.
+
+So now this code would be written:
+
+  { use sort qw(defaults _quicksort); # force quicksort
+    no sort "stable";      # stability not wanted
+    my $current;
+    BEGIN { $current = sort::current; }
+    print "$current\n";
+    @a = sort @b;
+    # Pragmas go out of scope at the end of the block
+  }
+  { use sort qw(defaults stable);     # force stability
+    my $current;
+    BEGIN { $current = sort::current; }
+    print "$current\n";
+    @c = sort @d;
+  }
+
+=cut
+
+                                                                                                                                                                                                                                                                                                                               

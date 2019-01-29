@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/julio/OpenCV/testopen.cpp
+stdio.h
+-
+opencv2/opencv.hpp
+-
+opencv2/imgproc/imgproc.hpp
+/home/julio/OpenCV/opencv2/imgproc/imgproc.hpp
+opencv2/highgui/highgui.hpp
+/home/julio/OpenCV/opencv2/highgui/highgui.hpp
+iostream
+-
+

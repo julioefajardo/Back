@@ -1,0 +1,8 @@
+prefix=/home/julio/catkin_ws/devel
+
+Name: hector_costmap
+Description: Description of hector_costmap
+Version: 0.0.0
+Cflags: -I/home/julio/catkin_ws/devel/include
+Libs: -L/home/julio/catkin_ws/devel/lib 
+Requires: 

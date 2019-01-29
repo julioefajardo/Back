@@ -1,0 +1,8 @@
+prefix=/home/julio/catkin_ws/install
+
+Name: my_mapping
+Description: Description of my_mapping
+Version: 0.0.0
+Cflags: -I/home/julio/catkin_ws/install/include
+Libs: -L/home/julio/catkin_ws/install/lib -lmy_mapping
+Requires: geometry_msgs nav_msgs roscpp rospy sensor_msgs std_msgs tf

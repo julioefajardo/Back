@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/julio/catkin_ws/devel/setup.sh
